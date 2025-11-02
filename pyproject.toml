@@ -9,6 +9,7 @@ dependencies = [
     "langchain>=1.0.3",
     "langchain-google-genai>=3.0.0",
     "pypdf2>=3.0.1",
+    "tyro>=0.9.35",
 ]
 
 [dependency-groups]
