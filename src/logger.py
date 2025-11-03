@@ -42,7 +42,7 @@ class ColoredFormatter(logging.Formatter):
         return message
 
 
-def get_logger(name="my_logger", level=logging.INFO, log_file=None):
+def get_logger(name, level=logging.INFO, log_file=None):
     """Creates and returns a logger.
 
     Args:

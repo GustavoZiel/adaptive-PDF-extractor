@@ -1,0 +1,22 @@
+[
+  {
+    "rule": "Test rule 1",
+    "weight": 1
+  },
+  {
+    "rule": "Test rule 2",
+    "weight": 1
+  },
+  {
+    "rule": "Test rule 3",
+    "weight": 1
+  },
+  {
+    "rule": "Test rule 4",
+    "weight": 1
+  },
+  {
+    "rule": "Test rule 5",
+    "weight": 1
+  }
+]

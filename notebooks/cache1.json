@@ -1,0 +1,30 @@
+{
+  "field1": [
+    {
+      "rule": "rule2",
+      "weight": 2
+    },
+    {
+      "rule": "rule1",
+      "weight": 1
+    },
+    {
+      "rule": "rule3",
+      "weight": 1
+    }
+  ],
+  "field2": [
+    {
+      "rule": "rule1",
+      "weight": 1
+    },
+    {
+      "rule": "rule2",
+      "weight": 1
+    },
+    {
+      "rule": "rule3",
+      "weight": 1
+    }
+  ]
+}
