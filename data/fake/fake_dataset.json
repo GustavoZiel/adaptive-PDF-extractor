@@ -1,0 +1,220 @@
+[
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "SCAN DOC 001 NomeBrenda Alves\nInscricao\n431608258\nAL\nSubsecao Garcia5 - Amapá\nEndereco\nAlameda de Novais, 78, Estrela, 94026-542 Teixeira / MT\nTelefone +5551 1615 5940Situacao SUSPENSO   ",
+    "expected_answer": {
+      "nome": "Brenda Alves",
+      "inscricao": "431608258",
+      "seccional": "AL",
+      "subsecao": "Garcia 5 - Amapá",
+      "endereco_profissional": "Alameda de Novais, 78, Estrela, 94026-542 Teixeira / MT",
+      "telefone_profissional": "+55 51 1615 5940",
+      "situacao": "SUSPENSO"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "SCAN DOC 001NomeLaís Pires   538061741\tSeccional ES\nSubsecao\nGarcia - Goiás EnderecoEsplanada Ester Fogaça, 24, Ventosa, 83276483 Vargas do Norte / ES Telefone Profissional\n+55 (051)56413953 SituacaoRegular   ",
+    "expected_answer": {
+      "nome": "Laís Pires",
+      "inscricao": "538061741",
+      "seccional": "ES",
+      "subsecao": "Garcia - Goiás",
+      "endereco_profissional": "Esplanada Ester Fogaça, 24, Ventosa, 83276483 Vargas do Norte / ES",
+      "telefone_profissional": "+55 (051) 5641 3953",
+      "situacao": "Regular"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "Nome\tNatália Casa Grande\nInscricao\n421587362\nCategoria\tADVOGADA\nEnderecoProfissional Condomínio Cassiano; Vila Betânia;69166978 Novaesdo Sul / RO #98\tSituacao   Regular\n",
+    "expected_answer": {
+      "nome": "Natália Casa Grande",
+      "inscricao": "421587362",
+      "categoria": "ADVOGADA",
+      "endereco_profissional": "Condomínio Cassiano; Vila Betânia; 69166978 Novaes do Sul / RO #98",
+      "situacao": "Regular"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "Nome\tJoão Montenegro 9OB\nInscricao 216587037\tSubsecao   Nogueira- São Paulo\nCategoria ADVOGADA\nTelefone\n51 9638 3465   ",
+    "expected_answer": {
+      "nome": "João Montenegro 9OB",
+      "inscricao": "216587037",
+      "subsecao": "Nogueira - São Paulo",
+      "categoria": "ADVOGADA",
+      "telefone_profissional": "51 9638 3465"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "Inscricao\n138025472\nSeccionalRJ Subsecao\nAbreu - Amapá\nCategoria SUPLEMENTAR\nEndereco Área Farias, 9, Floramar,73829-973 Jesus de Correia / AM ",
+    "expected_answer": {
+      "inscricao": "138025472",
+      "seccional": "RJ",
+      "subsecao": "Abreu - Amapá",
+      "categoria": "SUPLEMENTAR",
+      "endereco_profissional": "Área Farias, 9, Floramar, 73829-973 Jesus de Correia / AM"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "SCAN DOC 001\nSeccional\nGO\nCategoria\tADVOGADO Setorde Albuquerque, Buraco Quente, 26773602 AbreudasFlores / GO\nTelefoneVcIeoFijK4",
+    "expected_answer": {
+      "seccional": "GO",
+      "categoria": "ADVOGADO",
+      "endereco_profissional": "Setor de Albuquerque, Buraco Quente, 26773602 Abreu das Flores / GO",
+      "telefone_profissional": "VcIeoFijK4"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "Nome\nAna Liz Souza rBH   Inscricao\n507431625\nSeccional CESubsecao\nPeixoto - AmapáEnderecoProfissional\nTravessa da Cruz, 290, Nova Gameleira, 43534-624 Dias deSá / AP\nTelefone\nLDgJyq04SUSituacaoRegular   ",
+    "expected_answer": {
+      "nome": "Ana Liz Souza rBH",
+      "inscricao": "507431625",
+      "seccional": "CE",
+      "subsecao": "Peixoto - Amapá",
+      "endereco_profissional": "Travessa da Cruz, 290, Nova Gameleira, 43534-624 Dias de Sá / AP",
+      "telefone_profissional": "LDgJyq04SU",
+      "situacao": "Regular"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "Nome\nDavi Lucca Ferreira   Inscricao\n3\tSeccional\nX1YqSubsecaoNovais do Sul 5 - Amazonas   Endereco\nConjunto daLuz; 2; Vila Piratininga; 44935348da Cunha de Aragão / AP #87 Situacao Regular\n",
+    "expected_answer": {
+      "nome": "Davi Lucca Ferreira",
+      "inscricao": "3",
+      "seccional": "X1Yq",
+      "subsecao": "Novais do Sul 5 - Amazonas",
+      "endereco_profissional": "Conjunto da Luz; 2; Vila Piratininga; 44935348 da Cunha de Aragão / AP #87",
+      "situacao": "Regular"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "Nome\tDom Nogueira uRI   054613826\nSubsecao Vieira do Norte - MatoGrosso do Sul\nCategoria\nADV   Endereco Profissional\nViaduto Caldeira, 78,Vila Atila De Paiva, 32260256 da Mata / CE   Telefone Profissional\t+55 51 6073 3754 Situacao   Regular\t",
+    "expected_answer": {
+      "nome": "Dom Nogueira uRI",
+      "inscricao": "054613826",
+      "subsecao": "Vieira do Norte - Mato Grosso do Sul",
+      "categoria": "ADV",
+      "endereco_profissional": "Viaduto Caldeira, 78, Vila Atila De Paiva, 32260256 da Mata / CE",
+      "telefone_profissional": "+55 51 6073 3754",
+      "situacao": "Regular"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "ocr_text": "Seccional RO\nSubsecao\tAlves do Campo - Goiás\nCategoria ESTAGIARIO   Endereco\tÁreaHenrique Peixoto; 65; Olhos D'água; 69340608 Fonseca /PA #41\nTelefoneUAHRLn0lKQ",
+    "expected_answer": {
+      "seccional": "RO",
+      "subsecao": "Alves do Campo - Goiás",
+      "categoria": "ESTAGIARIO",
+      "endereco_profissional": "Área Henrique Peixoto; 65; Olhos D'água; 69340608 Fonseca / PA #41",
+      "telefone_profissional": "UAHRLn0lKQ"
+    }
+  }
+]
