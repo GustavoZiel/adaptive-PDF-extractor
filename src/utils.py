@@ -8,7 +8,7 @@ from PyPDF2 import PdfReader
 
 from logger import get_logger
 
-logger = get_logger(name=__name__)
+logger = get_logger(name=__name__, level="DEBUG")
 
 
 def normalize_whitespace(text: str) -> str:
@@ -91,7 +91,7 @@ def get_pdf_text(file_path):
 
 
 def create_pydantic_model(schema: Dict[str, Any]) -> BaseModel:
-    logger.info(
+    logger.debug(
         "create_pydantic_model: creating model for schema with %d fields", len(schema)
     )
     fields = {
@@ -106,23 +106,51 @@ def create_pydantic_model(schema: Dict[str, Any]) -> BaseModel:
 
 
 def process_dataset(dataset, data_folder):
-    logger.info(
-        "process_dataset: processing %d items from %s", len(dataset), data_folder
-    )
+    logger.info("process_dataset: starting processing of dataset")
     for i, data in enumerate(dataset):
-        pdf_path = os.path.join(data_folder, data["pdf_path"])
-        logger.info("process_dataset: [%d] reading PDF at %s", i, pdf_path)
-        try:
-            pdf_text = get_pdf_text(pdf_path)
-            data.update({"pdf_text": pdf_text})
+        if "pdf_text" in data:
+            logger.debug("process_dataset: [%d] skipping already processed item", i)
+            continue
+
+        elif "pdf_path" in data:
+            logger.debug("process_dataset: [%d] reading PDF at %s", i, data["pdf_path"])
+
+            pdf_path = os.path.join(data_folder, data["pdf_path"])
+            try:
+                pdf_text = get_pdf_text(pdf_path)
+                data.update({"pdf_text": pdf_text})
+            except Exception as e:
+                logger.exception(
+                    "process_dataset: [%d] failed to process %s: %s", i, pdf_path, e
+                )
+                raise
+
+        # TODO see with raise something here
+        if "extraction_schema" not in data:
+            logger.warning(
+                "process_dataset: [%d] missing extraction_schema, skipping pydantic model creation",
+                i,
+            )
+            continue
+        else:
             data.update(
                 {"pydantic_model": create_pydantic_model(data["extraction_schema"])}
             )
-            logger.debug("process_dataset: [%d] processed successfully", i)
-        except Exception as e:
-            logger.exception(
-                "process_dataset: [%d] failed to process %s: %s", i, pdf_path, e
-            )
-            raise
+
+        logger.info("process_dataset: [%d] processed successfully", i)
+
     logger.info("process_dataset: completed processing")
     return dataset
+
+
+def write_dataset(dataset, filename, data_folder):
+    # Ensure the folder exists
+    os.makedirs(data_folder, exist_ok=True)
+
+    path = os.path.join(data_folder, filename)
+    logger.info("write_dataset: writing dataset to %s", path)
+
+    with open(path, "w+", encoding="utf-8") as f:
+        json.dump(dataset, f, indent=2, ensure_ascii=False)
+
+    logger.info("write_dataset: dataset written successfully")

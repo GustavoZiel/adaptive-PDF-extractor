@@ -1,0 +1,24 @@
+[
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      "seccional": "Seccional do profissional",
+      "subsecao": "Subseção à qual o profissional faz parte",
+      "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      "endereco_profissional": "Endereço do profissional",
+      "telefone_profissional": "Telefone do profissional",
+      "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "fake_text": "SCAN DOC 001 NomeBrenda Alves\nInscricao\n431608258\nAL\nSubsecao Garcia5 - Amapá\nEndereco\nAlameda de Novais, 78, Estrela, 94026-542 Teixeira / MT\nTelefone +5551 1615 5940Situacao SUSPENSO   ",
+    "expected_answer": {
+      "nome": "Brenda Alves",
+      "inscricao": "431608258",
+      "seccional": "AL",
+      "subsecao": "Garcia 5 - Amapá",
+      "endereco_profissional": "Alameda de Novais, 78, Estrela, 94026-542 Teixeira / MT",
+      "telefone_profissional": "+55 51 1615 5940",
+      "situacao": "SUSPENSO"
+    },
+    "pydantic_model": 

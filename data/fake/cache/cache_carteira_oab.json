@@ -1,0 +1,270 @@
+{
+  "nome": [
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Nome(.*?)(?:\\n|Inscricao)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Za-z\\s]+$"
+      },
+      "weight": 10
+    },
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 1
+    }
+  ],
+  "inscricao": [
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Inscricao\\s*(\\d+)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^\\d{9}$"
+      },
+      "weight": 9
+    },
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 2
+    }
+  ],
+  "seccional": [
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Inscricao\\s*\\n\\s*\\d+\\s*\\n\\s*([A-Z]{2})",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Z]{2}$"
+      },
+      "weight": 9
+    },
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Seccional\\s*([A-Z]+)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Z]{2}$"
+      },
+      "weight": 1
+    },
+    {
+      "rule": {
+        "type": "keyword",
+        "rule": null,
+        "keyword": "Seccional",
+        "strategy": "next_line",
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[a-zA-Z0-9]+$"
+      },
+      "weight": 1
+    }
+  ],
+  "subsecao": [
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Subsecao\\s*([^\\n]+)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Za-z0-9\\s\\u00C0-\\u017F-]+$"
+      },
+      "weight": 11
+    }
+  ],
+  "categoria": [
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 9
+    },
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 1
+    },
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 1
+    },
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 1
+    },
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 1
+    }
+  ],
+  "endereco_profissional": [
+    {
+      "rule": {
+        "type": "keyword",
+        "rule": null,
+        "keyword": "Endereco",
+        "strategy": "next_line",
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Za-z0-9\\s,./-]+$"
+      },
+      "weight": 9
+    },
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Endereco\\t([^\\n]*)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[a-zA-Z0-9\\s;,./'#\\u00C0-\\u017F-]+$"
+      },
+      "weight": 1
+    },
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Endereco Profissional\\t([^\\n]+)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[\\w\\s,./-]+$"
+      },
+      "weight": 1
+    }
+  ],
+  "telefone_profissional": [
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Telefone\\s*([\\+\\d\\s]+?)Situacao",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^\\+\\d{4}\\s\\d{4}\\s\\d{4}$"
+      },
+      "weight": 9
+    },
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Telefone(\\S+)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Za-z0-9]+$"
+      },
+      "weight": 1
+    },
+    {
+      "rule": {
+        "type": "empty",
+        "rule": null,
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^$"
+      },
+      "weight": 1
+    }
+  ],
+  "situacao": [
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Situacao\\s*([A-Z]+)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Z]+$"
+      },
+      "weight": 10
+    },
+    {
+      "rule": {
+        "type": "regex",
+        "rule": "Categoria\\s+([A-Z]+)",
+        "keyword": null,
+        "strategy": null,
+        "stop_keyword": null,
+        "line_number": null,
+        "validation_regex": "^[A-Z]+$"
+      },
+      "weight": 1
+    }
+  ]
+}

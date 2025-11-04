@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pickle
 from collections import defaultdict
 
@@ -8,8 +9,8 @@ from rule import Rule
 
 
 class CacheItem:
-    def __init__(self, rule: str, weight: int = 1):
-        self.rule = rule
+    def __init__(self, rule: Rule, weight: int = 1):
+        self.rule = rule  # Now stores a Rule object, not a string
         self.weight = weight
 
     def increment(self, value: int = 1) -> "CacheItem":
@@ -23,19 +24,17 @@ class CacheItem:
         return self
 
     def apply(self, text: str) -> str:
-        """Apply rule to text, return text if matches (case-insensitive), else empty string."""
-        if text.lower() == self.rule.lower():
-            return text
-        return ""
+        """Apply the Rule object to text and return the extracted value."""
+        return self.rule.apply(text)
 
     def validate(self, text: str) -> bool:
-        """Validate if text matches rule (case-insensitive)."""
-        return text.lower() == self.rule.lower()
+        """Validate the extracted text using the Rule object's validation."""
+        return self.rule.validate(text)
 
     def to_dict(self):
         """Convert to dictionary."""
         return {
-            "rule": str(self.rule),
+            "rule": self.rule.model_dump(),  # Serialize Rule as dict
             "weight": self.weight,
         }
 
@@ -68,8 +67,8 @@ class RulesList:
         self.curr: Node | None = None
         self.length: int = 0
 
-    def add_rule(self, rule: str, weight: int = 1):
-        """Add a new rule with weight."""
+    def add_rule(self, rule: Rule, weight: int = 1):
+        """Add a new Rule object with weight."""
         node = Node(item=CacheItem(rule=rule, weight=weight))
         if not self.head:
             self.head = node
@@ -80,16 +79,24 @@ class RulesList:
             self.curr = node
         self.length += 1
 
-    def try_extract(self, text: str) -> str | None:
-        """Try to extract text using rules, increment weight on match."""
+    def try_extract(self, text: str) -> tuple[str | None, bool]:
+        """Try to extract text using rules, increment weight on match.
+
+        Returns:
+            tuple[str | None, bool]: (extracted_text, rule_matched)
+                - extracted_text: The extracted value (can be None for empty rules)
+                - rule_matched: True if a rule successfully validated, False otherwise
+        """
         for node in self:
             rule = node.item
             extracted_text = rule.apply(text)
+            print(f"Extracted text: {extracted_text}")
+            print(rule.validate(extracted_text))
             if rule.validate(extracted_text):
                 rule.increment()
                 self.update(node)
-                return extracted_text
-        return None
+                return extracted_text, True
+        return None, False
 
     def update(self, node: Node):
         """Update node position by bubbling up based on weight."""
@@ -123,6 +130,9 @@ class RulesList:
             data.append(aux.item.to_dict())
         return data
 
+    def __len__(self):
+        return self.length
+
     def __repr__(self):
         list_repr = []
         for node in self:
@@ -146,17 +156,23 @@ class Cache:
         self.fields[field].add_rule(rule)
 
     def try_extract(self, field, text):
-        """Try extracting using cached rules for a field."""
-        rules = self.fields.get(field)
-        extracted_text = rules.try_extract(text)
-        return extracted_text
+        """Try extracting using cached rules for a field.
 
-    def save_to_file_json(self, filepath: str):
-        """Save cache to JSON file."""
-        data = {}
-        for field, rules_list in self.fields.items():
-            data[field] = rules_list.get_data()
-        with open(filepath, "w", encoding="utf-8") as f:
+        Returns:
+            tuple[str | None, bool]: (extracted_text, rule_matched)
+        """
+        rules = self.fields[field]
+        extracted_text, matched = rules.try_extract(text)
+        return extracted_text, matched
+
+    def save_to_file_json(self, filename: str, filepath: str):
+        """Save cache to a JSON file."""
+        data = {
+            field: rules_list.get_data() for field, rules_list in self.fields.items()
+        }
+        os.makedirs(os.path.dirname(os.path.join(filepath, filename)), exist_ok=True)
+        output_path = os.path.join(filepath, filename)
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     @classmethod
@@ -169,16 +185,20 @@ class Cache:
         for field, items in data.items():
             rules_list = RulesList()
             for item in items:
-                rules_list.add_rule(rule=item["rule"], weight=item["weight"])
+                # Deserialize Rule object from dict
+                rule_obj = Rule.model_validate(item["rule"])
+                rules_list.add_rule(rule=rule_obj, weight=item["weight"])
             instance.fields[field] = rules_list
         return instance
 
-    def save_to_file_pickle(self, filepath: str):
-        """Save cache to pickle file."""
-        data = {}
-        for field, rules_list in self.fields.items():
-            data[field] = rules_list.get_data()
-        with open(filepath, "wb") as f:
+    def save_to_file_pickle(self, filename: str, filepath: str):
+        """Save cache to a pickle file."""
+        data = {
+            field: rules_list.get_data() for field, rules_list in self.fields.items()
+        }
+        os.makedirs(os.path.dirname(os.path.join(filepath, filename)), exist_ok=True)
+        output_path = os.path.join(filepath, filename)
+        with open(output_path, "wb") as f:
             pickle.dump(data, f)
 
     @classmethod
@@ -191,7 +211,9 @@ class Cache:
         for field, items in data.items():
             rules_list = RulesList()
             for item in items:
-                rules_list.add_rule(rule=item["rule"], weight=item["weight"])
+                # Deserialize Rule object from dict
+                rule_obj = Rule.model_validate(item["rule"])
+                rules_list.add_rule(rule=rule_obj, weight=item["weight"])
             instance.fields[field] = rules_list
         return instance
 

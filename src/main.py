@@ -1,5 +1,5 @@
 import os
-from pprint import pprint
+from collections import defaultdict
 
 import tyro
 from dotenv import load_dotenv
@@ -10,12 +10,18 @@ from pydantic import BaseModel, DirectoryPath, Field, FilePath
 from cache import Cache
 from logger import get_logger
 from models import extract_prompt_en
-from rule import Rule, generate_robust_rule
-from utils import process_dataset, read_dataset
+from rule import Rule, create_empty_rule, generate_robust_rule
+from utils import (
+    clean_llm_output,
+    create_pydantic_model,
+    process_dataset,
+    read_dataset,
+    write_dataset,
+)
 
 load_dotenv()
 
-logger = get_logger(__name__)
+logger = get_logger(__name__, level="INFO")
 
 
 class Args(BaseModel):
@@ -51,152 +57,265 @@ model = init_chat_model(
 )
 
 
-def main(args: Args):
-    # print(args)
+def read_cache_file(filepath: str) -> Cache | None:
+    """Read cache from a JSON file if it exists."""
+    if os.path.exists(filepath):
+        logger.info("Loading cache from file: %s", filepath)
+        return Cache.load_from_file_json(filepath)
+    else:
+        logger.warning("Cache file not found: %s", filepath)
+        return None
 
+
+def main(args: Args):
+    """Main processing loop: extract fields using cached rules or generate new ones."""
+    logger.info("Starting extraction pipeline with args: %s", args)
+
+    # Load and preprocess dataset
     dataset = read_dataset(filename=args.dataset_filename, data_folder=args.data_folder)
+    logger.info("Loaded %d documents from dataset", len(dataset))
 
     processed_dataset = process_dataset(dataset=dataset, data_folder=args.data_folder)
+    logger.debug("Processed %d documents (added PDF text)", len(processed_dataset))
 
-    # pprint("Original dataset:")
-    # pprint(dataset[0])
+    dict_caches = defaultdict(Cache)
 
-    pprint("Processed dataset:")
-    pprint(processed_dataset[0])
+    logger.debug("Initialized cache dictionary for storing rules by label")
 
-    if args.cache_filename:
-        logger.info(f"Loading cache from {args.cache_filename}...")
-        if args.cache_filename.endswith(".pkl"):
-            my_cache = Cache.load_from_file_pickle(
-                filepath=os.path.join(args.data_folder, args.cache_filename)
-            )
-        elif args.cache_filename.endswith(".json"):
-            my_cache = Cache.load_from_file_json(
-                filepath=os.path.join(args.data_folder, args.cache_filename)
-            )
-        else:
-            raise ValueError("Unsupported cache file format.")
-    else:
-        logger.info("No cache file specified, using empty cache.")
-        my_cache = Cache()
+    # Process each document in the dataset
+    for doc_idx, data in enumerate(processed_dataset, 1):
+        logger.info("=" * 80)
+        logger.info(
+            "Processing document %d/%d - Label: '%s'",
+            doc_idx,
+            len(processed_dataset),
+            data["label"],
+        )
 
-        # (
-        #     {
-        #         "label": "carteira_oab",
-        #         "extraction_schema": {
-        #             "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
-        #             "inscricao": "Número de inscrição do profissional",
-        #             "seccional": "Seccional do profissional",
-        #             "subsecao": "Subseção à qual o profissional faz parte",
-        #             "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
-        #             "endereco_profissional": "Endereço do profissional",
-        #             "situacao": "Situação do profissional, normalmente no canto inferior direito.",
-        #         },
-        #         "pdf_path": "oab_2.pdf",
-        #     },
-        # )
+        # Get cache for this document's label
+        if args.cache_filename:
+            cache_path = os.path.join(args.data_folder, args.cache_filename)
+            loaded_cache = read_cache_file(cache_path)
+            if loaded_cache:
+                dict_caches[data["label"]] = loaded_cache
 
-        # # Initialize Mother Cache
-        # dict_cache = {}
-        for data in processed_dataset[:1]:
-            #     label = data["label"]
-            #     pdf_text = data["pdf_text"]
+        label_cache = dict_caches[data["label"]]
+        cached_rules_count = sum(len(rules) for rules in label_cache.fields.values())
+        logger.debug(
+            "Label '%s' has %d cached rules across all fields",
+            data["label"],
+            cached_rules_count,
+        )
 
-            #     # Initialize for each label
-            #     if label not in dict_cache:
-            #         dict_cache[label] = {}
+        # Extract all required fields for this document
+        all_fields = list(data["extraction_schema"].keys())
+        logger.info("Document requires %d fields: %s", len(all_fields), all_fields)
 
-            #     # Initialize for each field within the label a Cache
-            #     for key in data["extraction_schema"].keys():
-            #         if key not in dict_cache[label]:
-            #             dict_cache[label][key] = Cache()
+        success_fields = []
+        failed_fields = []
+        text_data = data.get("pdf_text", "")
+        logger.debug("Document text length: %d characters", len(text_data))
 
-            #     # For each field, in each label, test all the rules in the cache sequentially
-            #     for field in data["extraction_schema"].keys():
-            #         print(f"Processing field '{field}' for label '{label}'")
-            #         cache = dict_cache[label][field]
-            #         for rule in cache:
-            #             print("Testing rule:", rule)
+        # Attempt extraction for each field using cached rules
+        ans = {}
+        for field in all_fields:
+            field_rules_count = len(label_cache.fields[field])
+            logger.debug("Field '%s': trying %d cached rules", field, field_rules_count)
 
-            #             extracted_value = rule.apply(pdf_text)
-            #             if rule.validate(extracted_value):
-            #                 cache.add_hit(rule)
-            #             break
-
-            # def print_dict_cache():
-            #     for label, fields in dict_cache.items():
-            #         print(f"Label: {label}")
-            #         for field, cache in fields.items():
-            #             print(f"  Field: {field}, Cache length: {cache.length}")
-
-            # print_dict_cache()
-
-            agent = create_agent(
-                # model=model, tools=[], response_format=OABSchema, checkpointer=memory
-                model=model,
-                tools=[],
-                response_format=data["pydantic_model"],
+            extracted_text, rule_matched = label_cache.try_extract(field, text_data)
+            print(
+                f"Field: {field}, Extracted Text: {extracted_text}, Matched: {rule_matched}"
             )
 
-            response = agent.invoke(
-                {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": extract_prompt_en.format(
-                                text=data["pdf_text"],
-                                schema=data["pydantic_model"],
-                            ),
-                        }
-                    ]
-                },
-                # config=config,
+            if rule_matched:
+                # A rule successfully validated (could be regular rule or empty rule)
+                ans[field] = extracted_text
+                success_fields.append(field)
+                if extracted_text is None:
+                    logger.info("✓ Field '%s' extracted (empty): None", field)
+                else:
+                    logger.info("✓ Field '%s' extracted: '%s'", field, extracted_text)
+            else:
+                # No cached rule matched
+                failed_fields.append(field)
+                logger.warning("✗ Field '%s' failed: no cached rule matched", field)
+
+        # Summary of extraction results
+        logger.info(
+            "Extraction summary - Success: %d/%d, Failed: %d/%d",
+            len(success_fields),
+            len(all_fields),
+            len(failed_fields),
+            len(all_fields),
+        )
+        logger.info("Successful fields: %s", success_fields)
+        logger.warning("Failed fields: %s", failed_fields)
+        logger.debug("Extracted values: %s", ans)
+
+        logger.info("Ans so far: %s", ans)
+
+        # Skip rule generation if all fields were successfully extracted
+        if not failed_fields:
+            logger.info("All fields extracted successfully - skipping rule generation")
+            continue
+
+        # Generate LLM extraction for failed fields
+        logger.info("Generating new rules for %d failed fields", len(failed_fields))
+
+        failed_fields_dict = {
+            field: data["extraction_schema"][field] for field in failed_fields
+        }
+        logger.debug("Failed fields schema: %s", failed_fields_dict)
+
+        # Create dynamic Pydantic model for failed fields
+        data.update({"pydantic_model": create_pydantic_model(failed_fields_dict)})
+        logger.debug("Created Pydantic model: %s", data["pydantic_model"].__name__)
+
+        # Initialize LLM agent for extraction
+        agent = create_agent(
+            model=model,
+            tools=[],
+            response_format=data["pydantic_model"],
+        )
+        logger.debug("Initialized extraction agent with structured output")
+
+        # Invoke LLM to extract failed fields
+        logger.info("Invoking LLM to extract %d failed fields", len(failed_fields))
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": extract_prompt_en.format(
+                            text=text_data,
+                            schema=data["pydantic_model"],
+                        ),
+                    }
+                ]
+            },
+        )
+
+        logger.debug("Raw LLM response: %s", response["structured_response"])
+
+        # Normalize LLM output (clean whitespace, format values)
+        model_dict = response["structured_response"].model_dump()
+        normalized_dict = {k: clean_llm_output(v) for k, v in model_dict.items()}
+        ans.update(normalized_dict)
+
+        response["structured_response"] = data["pydantic_model"](**normalized_dict)
+
+        logger.info("Normalized LLM extraction: %s", response["structured_response"])
+
+        # Initialize LLM agent for rule generation
+        agent_rule = create_agent(
+            model=model,
+            tools=[],
+            response_format=Rule,
+        )
+        logger.debug("Initialized rule generation agent")
+
+        # Generate extraction rules for each successfully extracted field
+        llm_response = response["structured_response"].model_dump()
+        generated_rules = {}
+
+        logger.info("Starting rule generation for %d fields", len(llm_response))
+        for field, value in llm_response.items():
+            # Handle None values with special empty rule
+            if value is None:
+                logger.warning(
+                    "Field '%s' has None value - creating empty rule to prevent LLM hallucination",
+                    field,
+                )
+                empty_rule = create_empty_rule()
+                generated_rules[field] = empty_rule
+                logger.info("✓ Created empty rule for field '%s' (type=empty)", field)
+                continue
+
+            logger.info("Generating rule for field '%s' with value '%s'", field, value)
+
+            # Prepare inputs for rule generation
+            field_name = field
+            field_value = value
+            field_description = data["extraction_schema"][field]
+
+            logger.debug(
+                "Rule generation inputs - Field: '%s', Value: '%s', Description: '%s'",
+                field_name,
+                field_value,
+                field_description,
             )
 
-            # print(response["structured_response"])
-
-            model_dict = response["structured_response"].model_dump()
-            # normalized_dict = {k: clean_llm_output(v) for k, v in model_dict.items()}
-            normalized_dict = {k: v for k, v in model_dict.items()}
-            response["structured_response"] = data["pydantic_model"](**normalized_dict)
-
-            # print(response["structured_response"])
-
-            agent_rule = create_agent(
-                # model=model, tools=[], response_format=Rule, checkpointer=memory
-                model=model,
-                tools=[],
-                response_format=Rule,
+            # Generate rule with validation loop (max_attempts retries)
+            rule_object = generate_robust_rule(
+                agent_rule,
+                text_data,
+                field_name,
+                field_value,
+                field_description,
+                max_attempts=args.max_attempts,
             )
 
-            pdf_text = data["pdf_text"]
-            llm_response = response["structured_response"].model_dump()
+            if rule_object is not None:
+                generated_rules[field] = rule_object
+                logger.info(
+                    "✓ Generated rule for field '%s': type=%s, rule=%s",
+                    field,
+                    rule_object.type,
+                    rule_object.rule or rule_object.keyword,
+                )
+            else:
+                logger.error(
+                    "✗ Failed to generate valid rule for field '%s' after %d attempts",
+                    field,
+                    args.max_attempts,
+                )
 
-            generated_rules = {}
+        logger.info(
+            "Rule generation complete - Generated %d/%d rules",
+            len(generated_rules),
+            len(llm_response),
+        )
+        logger.debug(
+            "Generated rules details: %s",
+            {k: v.model_dump() if v else None for k, v in generated_rules.items()},
+        )
 
-            for field, value in llm_response.items():
-                # print("Generating rule for field:", field, "with value:", value)
-                if value is not None:
-                    # Preparar os inputs para o NOVO prompt
-                    field_name = field
-                    field_value = value
-                    field_description = data["extraction_schema"][field]
+        # Add generated rules to cache
+        rules_added = 0
+        for field, rule in generated_rules.items():
+            if rule is not None:
+                logger.info(
+                    "Adding rule to cache - Label: '%s', Field: '%s'",
+                    data["label"],
+                    field,
+                )
+                logger.debug("Rule details: %s", rule.model_dump())
+                label_cache.fields[field].add_rule(rule)
+                rules_added += 1
+            else:
+                logger.warning("Skipping None rule for field '%s'", field)
 
-                    rule_object = generate_robust_rule(
-                        agent_rule,
-                        pdf_text,
-                        field_name,
-                        field_value,
-                        field_description,
-                        max_attempts=5,
-                    )
+        logger.info(
+            "Added %d new rules to cache for label '%s'", rules_added, data["label"]
+        )
 
-                    generated_rules[field] = rule_object
-                    # print("Generated rule for field", field, ":", generated_rules[field])
-                break
+    # Save all caches to disk
+    logger.info("=" * 80)
+    logger.info("Saving caches for %d labels", len(dict_caches))
 
-            logger.info("All generated rules:")
-            pprint(generated_rules)
+    for label, label_cache in dict_caches.items():
+        total_rules = sum(len(rules) for rules in label_cache.fields.values())
+        cache_filename = f"cache_{label}.json"
+
+        logger.info("Saving cache for label '%s' - Total rules: %d", label, total_rules)
+        logger.debug("Cache fields: %s", list(label_cache.fields.keys()))
+
+        label_cache.save_to_file_json(
+            filename=f"cache/{cache_filename}", filepath=args.data_folder
+        )
+        logger.info("✓ Saved cache to: %s", cache_filename)
+
+    logger.info("Pipeline complete - All caches saved successfully")
 
 
 if __name__ == "__main__":

@@ -219,7 +219,7 @@ def generate_sample():
     return {
         "label": LABEL,
         "extraction_schema": EXTRACTION_SCHEMA,
-        "ocr_text": final_ocr_text,
+        "pdf_text": final_ocr_text,
         "expected_answer": expected_answer,
     }
 
