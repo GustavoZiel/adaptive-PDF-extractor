@@ -7,6 +7,9 @@ import tyro
 from faker import Faker
 from pydantic import BaseModel, Field
 
+from src.logger import get_logger
+
+logger = get_logger(__name__, level="DEBUG")
 fake = Faker("pt_BR")
 
 
@@ -21,6 +24,14 @@ EXTRACTION_SCHEMA = {
     "telefone_profissional": "Telefone do profissional",
     "situacao": "Situação do profissional, normalmente no canto inferior direito.",
 }
+
+
+class Args(BaseModel):
+    save_path: str = Field(..., description="Path to the data folder.")
+    num_samples: int = Field(
+        ..., description="Number of samples to generate for the dataset."
+    )
+    seed: int = Field(42, description="Random seed for reproducibility.")
 
 
 def seed_random(seed_value):
@@ -39,7 +50,7 @@ def generate_canonical_record():
         ),
         "endereco_profissional": fake.address().replace("\n", ", "),
         "telefone_profissional": fake.phone_number(),
-        "situacao": "Regular",
+        "situacao": "Situação Regular",
     }
 
 
@@ -110,29 +121,21 @@ def fuzz_text(text):
 
 def generate_sample():
     canonical_record = generate_canonical_record()
+
     ocr_chunks = []
     expected_answer = {}
 
-    if random.random() < 0.3:
-        ocr_chunks.append(
-            random.choice(["ORDEM DOS ADV0GAD0S", "SCAN DOC 001", fake.company()])
-        )
+    # if random.random() < 0.3:
+    #     ocr_chunks.append(
+    #         random.choice(["ORDEM DOS ADV0GAD0S", "SCAN DOC 001", fake.company()])
+    #     )
 
     for field in EXTRACTION_SCHEMA.keys():
         state = random.choice(
-            [
-                "correct",
-                "correct",
-                "correct",
-                "correct",
-                "correct",
-                "wrong",
-                "wrong",
-                "omitted",
-                "omitted",
-                "omitted",
-            ]
-        )  # , "placeholder"])
+            # ["correct"]
+            ["correct"] * 7 + ["omitted"] * 3
+            # ["correct"] * 5 + ["wrong"] * 2 + ["omitted"] * 3 + ["placeholder"] * 0
+        )
 
         value = None
         expected_value = None
@@ -140,81 +143,63 @@ def generate_sample():
         if state == "correct":
             value = canonical_record[field]
             expected_value = value
-        elif state == "wrong":
-            value = generate_wrong_data(field, canonical_record[field])
-            expected_value = value
-        # elif state == "placeholder":
-        #     value = random.choice(["N/D", "---", "???", "NA", "ILEGIVEL"])
-        #     expected_value = value  # O modelo deve ser capaz de extrair "N/D"
+        #     elif state == "wrong":
+        #         value = generate_wrong_data(field, canonical_record[field])
+        #         expected_value = value
+        #     # elif state == "placeholder":
+        #     #     value = random.choice(["N/D", "---", "???", "NA", "ILEGIVEL"])
+        #     #     expected_value = value  # O modelo deve ser capaz de extrair "N/D"
         elif state == "omitted":
             expected_value = None
             # # Mesmo omitido, o rótulo pode aparecer
-            # if random.random() < 0.3:
-            #     ocr_chunks.append(fuzz_text(field.replace("_", " ").title()))
+            # if random.random() < 0.5:
+            #     # ocr_chunks.append(fuzz_text(field.replace("_", " ").title()))
+            ocr_chunks.append(field.replace("_", " ").title())
             continue
 
         expected_answer[field] = expected_value
 
         label_text_base = field.replace("_", " ").title()
         label_state = random.choice(
-            [
-                "full",
-                "full",
-                "full",
-                "full",
-                "full",
-                "mixed",
-                "mixed",
-                "mixed",
-                "partial",
-                "omitted",
-            ]
+            ["full"]
+            # ["full"] * 5 + ["mixed"] * 3 + ["partial"] * 1 + ["omitted"] * 1
         )
 
-        fuzzed_value = fuzz_text(value)
+        # fuzzed_value = fuzz_text(value)
+        fuzzed_value = value
 
         if label_state == "full":
-            ocr_chunks.append(fuzz_text(label_text_base))
+            # ocr_chunks.append(fuzz_text(label_text_base))
+            ocr_chunks.append(label_text_base)
             ocr_chunks.append(fuzzed_value)
 
-        elif label_state == "partial":
-            ocr_chunks.append(fuzz_text(label_text_base.split()[0]))
-            ocr_chunks.append(fuzzed_value)
+    #     elif label_state == "partial":
+    #         ocr_chunks.append(fuzz_text(label_text_base.split()[0]))
+    #         ocr_chunks.append(fuzzed_value)
 
-        elif label_state == "omitted":
-            ocr_chunks.append(fuzzed_value)
+    #     elif label_state == "omitted":
+    #         ocr_chunks.append(fuzzed_value)
 
-        elif label_state == "mixed":
-            if random.random() < 0.5:
-                ocr_chunks.append(fuzz_text(f"{label_text_base.split()[0]} {value}"))
-            else:
-                ocr_chunks.append(fuzz_text(f"{label_text_base.split()[0]}{value}"))
+    #     elif label_state == "mixed":
+    #         if random.random() < 0.5:
+    #             ocr_chunks.append(fuzz_text(f"{label_text_base.split()[0]} {value}"))
+    #         else:
+    #             ocr_chunks.append(fuzz_text(f"{label_text_base.split()[0]}{value}"))
+
+    if random.random() < 0.1:
+        random.shuffle(ocr_chunks)
+
+    logger.debug(f"ocr_chunks: {ocr_chunks}")
 
     final_ocr_text = ""
     for chunk in ocr_chunks:
         final_ocr_text += chunk
         separator = random.choice(
-            [
-                "\n",
-                "\n",
-                "\n",
-                "\n",
-                "\n",
-                "\n",
-                "\n",
-                "\n",
-                " ",
-                " ",
-                " ",
-                "",
-                "",
-                "   ",
-                "   ",
-                "\t",
-                "\t",
-            ]
+            # ["\n"]
+            ["\n"] * 8 + [""] * 4 + [" "] * 4 + ["   "] * 2 + ["\t"] * 2,
         )
         final_ocr_text += separator
+    logger.debug(f"final_ocr_text:\n{final_ocr_text}")
 
     return {
         "label": LABEL,
@@ -224,25 +209,24 @@ def generate_sample():
     }
 
 
-class Args(BaseModel):
-    save_path: str = Field(..., description="Path to the data folder.")
-    num_samples: int = Field(
-        ..., description="Number of samples to generate for the dataset."
-    )
-    seed: int = Field(42, description="Random seed for reproducibility.")
+def write_json(data, path):
+    os.makedirs(path, exist_ok=True)
+    output_path = os.path.join(path, "fake_dataset.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    logger.info(f"Dataset gerado e salvo em: {output_path}")
 
 
 def main(args: Args):
+    logger.info("Iniciando a geração do dataset falso...")
+
     seed_random(args.seed)
 
     dataset = [generate_sample() for _ in range(args.num_samples)]
 
-    os.makedirs(args.save_path, exist_ok=True)
-    output_path = os.path.join(args.save_path, "fake_dataset.json")
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(dataset, f, indent=2, ensure_ascii=False)
+    write_json(dataset, args.save_path)
 
-    print(f"Dataset gerado e salvo em: {output_path}")
+    logger.info("Geração do dataset falso concluída.")
 
 
 if __name__ == "__main__":
