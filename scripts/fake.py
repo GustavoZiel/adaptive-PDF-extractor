@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from src.logger import get_logger
 
-logger = get_logger(__name__, level="DEBUG")
+logger = get_logger(__name__, level="INFO")
 fake = Faker("pt_BR")
 
 
