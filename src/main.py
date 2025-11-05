@@ -73,7 +73,7 @@ def read_cache_file(cache_filename: str, data_folder: str) -> Cache | None:
     cache_path = os.path.join(data_folder, cache_filename)
 
     if not os.path.exists(cache_path):
-        logger.warning("Cache file not found: %s", cache_path)
+        logger.warning(f"Cache file not found: {cache_path}, skipping load.")
         return None
 
     try:
@@ -389,7 +389,7 @@ def main(args: Args):
         global_loaded_cache = None
 
     # Process each document in the dataset
-    for doc_idx, data in enumerate(processed_dataset[:1], 1):
+    for doc_idx, data in enumerate(processed_dataset[:500], 1):
         start = time.time()
 
         success_fields = []
@@ -432,7 +432,7 @@ def main(args: Args):
 
         # Attempt extraction for each field using cached rules
         ans = {}
-        for field_name in all_fields[:1]:
+        for field_name in all_fields:
             field_rules_count = len(label_cache.fields[field_name])
             logger.debug(
                 "Field '%s': trying %d cached rules", field_name, field_rules_count
@@ -479,7 +479,11 @@ def main(args: Args):
 
             # Create dynamic Pydantic model for failed fields
             data.update({"pydantic_model": create_pydantic_model(failed_fields_dict)})
-            logger.debug("Created Pydantic model: %s", data["pydantic_model"].__name__)
+            logger.debug(
+                "Created Pydantic model: %s, model_dump: %s",
+                data["pydantic_model"].__name__,
+                data["pydantic_model"]().model_dump(),
+            )
 
             # Initialize LLM agent for extraction
             agent = create_agent(
@@ -498,7 +502,11 @@ def main(args: Args):
                             "role": "user",
                             "content": extract_prompt_en.format(
                                 text=text_data,
-                                schema=data["pydantic_model"],
+                                schema={
+                                    k: v
+                                    for k, v in data["extraction_schema"].items()
+                                    if k in failed_fields
+                                },
                             ),
                         }
                     ]
@@ -580,6 +588,7 @@ def main(args: Args):
                     field,
                     value,
                     field_description,
+                    all_fields,
                     max_attempts=args.max_attempts,
                 )
 

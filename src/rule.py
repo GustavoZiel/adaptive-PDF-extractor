@@ -73,13 +73,21 @@ class Rule(BaseModel):
 
 
 def create_rule_generation_prompt(
-    text: str, field_name: str, field_value: str, field_description: str
+    text: str,
+    field_name: str,
+    field_value: str,
+    field_description: str,
+    all_fields: List[str],
 ) -> str:
+    other_keywords = ", ".join(
+        [f"'{fname}'" for fname in all_fields if fname != field_name]
+    )
     return rule_generation_prompt_template_en.format(
         text=text,
         field_name=field_name,
         field_value=field_value,
         field_description=field_description,
+        other_keywords=other_keywords,
     )
 
 
@@ -386,6 +394,7 @@ def generate_robust_rule(
     field_name: str,
     field_value: str,
     field_description: str,
+    all_fields: List[str],
     max_attempts: int = 3,
 ) -> tuple[Optional[Rule], int, int]:
     """Generate a robust extraction rule with validation.
@@ -409,7 +418,7 @@ def generate_robust_rule(
 
     # 1. Prepare the base prompt
     base_prompt = create_rule_generation_prompt(
-        text, field_name, field_value, field_description
+        text, field_name, field_value, field_description, all_fields
     )
     feedback_history: List[str] = []  # Stores feedback from failures
 
