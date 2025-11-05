@@ -14,3 +14,8 @@ wheels/
 
 # VsCode settings
 .vscode/
+
+# Logs
+logs/
+*.log
+wandb/
