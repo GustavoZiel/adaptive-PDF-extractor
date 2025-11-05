@@ -1,3 +1,15 @@
+import os
+
+from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
+
+from logger import get_logger
+
+load_dotenv()
+
+logger = get_logger(__name__)
+
+
 extract_prompt_pt = """
 Você receberá um trecho de texto extraído de um documento.
 
@@ -147,3 +159,26 @@ Return **only** a single, valid JSON object for the generated rule, strictly adh
 **Your Turn:**
 Generate the rule for the field `"{field_name}"`.
 """
+
+
+def init_model():
+    model = None
+    if os.getenv("OPENAI_API_KEY"):
+        logger.debug("Initializing OpenAI model")
+        model = init_chat_model(
+            "gpt-5-mini",
+            model_provider="openai",
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+    elif os.getenv("GEMINI_API_KEY"):
+        logger.debug("Initializing Gemini model")
+        model = init_chat_model(
+            "gemini-2.5-flash-lite",
+            model_provider="google_genai",
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+    else:
+        raise ValueError(
+            "Neither GEMINI_API_KEY nor OPENAI_API_KEY is set in the environment."
+        )
+    return model

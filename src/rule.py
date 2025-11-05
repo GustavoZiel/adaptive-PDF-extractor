@@ -387,8 +387,16 @@ def generate_robust_rule(
     field_value: str,
     field_description: str,
     max_attempts: int = 3,
-) -> Optional[Rule]:
+) -> tuple[Optional[Rule], int, int]:
+    """Generate a robust extraction rule with validation.
+
+    Returns:
+        tuple: (rule, total_prompt_tokens, total_completion_tokens)
+    """
     # TODO Clean everything here
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+
     extra = (
         {
             "field": field_name,
@@ -452,6 +460,20 @@ def generate_robust_rule(
             {"messages": [{"role": "user", "content": current_prompt}]}
         )
 
+        # Track token usage from this attempt
+        ai_message = response["messages"][-1]
+        if hasattr(ai_message, "response_metadata") and ai_message.response_metadata:
+            if (
+                "token_usage" in ai_message.response_metadata
+                and ai_message.response_metadata["token_usage"]
+            ):
+                total_prompt_tokens += ai_message.response_metadata["token_usage"].get(
+                    "prompt_tokens", 0
+                )
+                total_completion_tokens += ai_message.response_metadata[
+                    "token_usage"
+                ].get("completion_tokens", 0)
+
         # 4. Validate Syntax
         rule, feedback = _validate_syntax(response, field_name, current_attempt, logger)
         if feedback:
@@ -486,7 +508,7 @@ def generate_robust_rule(
         logger.info(
             f"Rule generation successful for field '{field_name}' after {current_attempt} attempts: {extra}",
         )
-        return rule
+        return rule, total_prompt_tokens, total_completion_tokens
 
     # 8. Failure (after max_attempts)
     extra = (
@@ -500,4 +522,4 @@ def generate_robust_rule(
         f"Failed to generate a valid rule for field '{field_name}' after {max_attempts} attempts: {extra}",
     )
     print(f"ALERT: Failed to generate a valid rule for field '{field_name}'.")
-    return None
+    return None, total_prompt_tokens, total_completion_tokens
