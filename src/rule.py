@@ -412,10 +412,6 @@ def generate_robust_rule(
             "field_value": field_value,
         },
     )
-    logger.info(
-        f"Starting robust rule generation for field '{field_name}' with value '{field_value}': {extra}"
-    )
-
     # 1. Prepare the base prompt
     base_prompt = create_rule_generation_prompt(
         text, field_name, field_value, field_description, all_fields
@@ -464,7 +460,6 @@ def generate_robust_rule(
                 "current_attempt": current_attempt,
             },
         )
-        logger.info(f"Invoking agent for attempt {current_attempt}: {extra}")
         response = agent_rule.invoke(
             {"messages": [{"role": "user", "content": current_prompt}]}
         )

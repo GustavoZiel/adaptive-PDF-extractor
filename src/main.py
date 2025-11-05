@@ -221,6 +221,7 @@ class WandbLogProperties:
         price_in: float,
         price_out: float,
         processing_time: float,
+        accuracy_pct: float,
         fields_correct: int,
         fields_failed: int,
         total_fields: int,
@@ -245,9 +246,7 @@ class WandbLogProperties:
         self.fields_correct_count = fields_correct
         self.fields_failed_count = fields_failed
         self.total_fields = total_fields
-        self.performance_per_doc = (
-            (fields_correct / total_fields * 100.0) if total_fields > 0 else 0.0
-        )
+        self.performance_per_doc = accuracy_pct
         self.failed_field_names = failed_field_names
 
         # Cache & Healing metrics
@@ -677,6 +676,7 @@ def main(args: Args):
                 price_in=GPT_5_MINI_INPUT_TOKEN_COST,
                 price_out=GPT_5_MINI_OUTPUT_TOKEN_COST,
                 processing_time=elapsed,
+                accuracy_pct=accuracy_pct,
                 fields_correct=len(success_fields),
                 fields_failed=len(failed_fields),
                 total_fields=len(all_fields),
