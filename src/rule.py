@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 from logger import get_logger
 from models import rule_generation_prompt_template_en
 
-logger = get_logger(name=__name__, level=logging.DEBUG)
+logger = get_logger(name=__name__)
 
 # Define the exact types of rules that your system understands
-RuleType = Literal["regex", "keyword", "position", "empty"]
+RuleType = Literal["regex", "keyword", "position"]
 
 # Define the exact strategies for rules of type "keyword"
 KeywordStrategy = Literal["next_line", "multiline_until_stop", "conditional_null"]
@@ -53,10 +53,6 @@ class Rule(BaseModel):
 
     def apply(self, text: Optional[str]) -> Optional[str]:
         """Applies this rule to the given text and returns the extracted value."""
-        # Special handling for empty rules - always return None
-        if self.type == "empty":
-            return None
-
         if not text:
             return None
         try:
@@ -67,10 +63,6 @@ class Rule(BaseModel):
 
     def validate(self, text: Optional[str]) -> bool:
         """Validates the text against the validation regex."""
-        # Special handling for empty rules - always validate as True for None
-        if self.type == "empty":
-            return text is None
-
         if not text:
             return False
         try:
@@ -88,18 +80,6 @@ def create_rule_generation_prompt(
         field_name=field_name,
         field_value=field_value,
         field_description=field_description,
-    )
-
-
-def create_empty_rule() -> Rule:
-    """Creates a special 'empty' rule that always returns None.
-
-    This is used when a field legitimately doesn't exist in the text,
-    preventing the LLM from hallucinating values in subsequent samples.
-    """
-    return Rule(
-        type="empty",
-        validation_regex=r"^$",  # Matches empty string (though not used for empty type)
     )
 
 
@@ -408,6 +388,7 @@ def generate_robust_rule(
     field_description: str,
     max_attempts: int = 3,
 ) -> Optional[Rule]:
+    # TODO Clean everything here
     extra = (
         {
             "field": field_name,

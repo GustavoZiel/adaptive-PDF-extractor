@@ -1,27 +1,35 @@
-import json
 import os
 import re
 from typing import Any, Dict
 
+import json5
 from pydantic import BaseModel, Field, create_model
 from PyPDF2 import PdfReader
 
 from logger import get_logger
 
-logger = get_logger(name=__name__, level="DEBUG")
+logger = get_logger(name=__name__)
 
 
-def normalize_whitespace(text: str) -> str:
-    logger.debug("normalize_whitespace: input=%r", text)
-    result = " ".join(text.split())
-    logger.debug("normalize_whitespace: output=%r", result)
-    return result
+def normalize_text(text: str) -> str:
+    """Comprehensive text normalization combining structure and whitespace normalization.
 
+    This function:
+    1. Splits conjoined letters and numbers (e.g., "Seccional101943" -> "Seccional 101943")
+    2. Splits conjoined words (e.g., "GOKUInscrição" -> "GOKU Inscrição")
+    3. Collapses multiple spaces/tabs into one
+    4. Collapses multiple newlines into one
+    5. Collapses all whitespace (including newlines) into single spaces (final cleanup)
+    6. Strips leading/trailing whitespace
 
-def normalize_structure(text: str) -> str:
-    logger.debug(
-        "normalize_structure: input length=%d", len(text) if text is not None else 0
-    )
+    Args:
+        text: Input text to normalize
+
+    Returns:
+        Normalized text string, or None if input is None
+    """
+    if text is None:
+        return text
 
     # 1. Add a space between conjoined letters and numbers
     # (e.g., "Seccional101943" -> "Seccional 101943")
@@ -41,95 +49,66 @@ def normalize_structure(text: str) -> str:
     # (e.g., "\n\n\n" -> "\n")
     text = re.sub(r"\n+", "\n", text)
 
-    # 5. Remove any leading/trailing whitespace from the whole text
-    result = text.strip()
-    logger.debug("normalize_structure: output length=%d", len(result))
-    return result
+    # 5. Final whitespace normalization - collapse all whitespace into single spaces
+    # This includes newlines, creating a single-line normalized output
+    text = " ".join(text.split())
 
-
-def clean_llm_output(text: str) -> str:
-    logger.debug(
-        "clean_llm_output: input length=%d", len(text) if text is not None else 0
-    )
-    # if not text:
-    #     return text
-    # return normalize_whitespace(normalize_structure(text))
-    result = text
-    logger.debug(
-        "clean_llm_output: output length=%d", len(result) if result is not None else 0
-    )
-    return result
+    # 6. Strip leading/trailing whitespace
+    return text.strip()
 
 
 def read_dataset(filename: str, data_folder: str):
     path = os.path.join(data_folder, filename)
-    logger.info("read_dataset: reading %s", path)
+    logger.info("reading %s", path)
     with open(path, "r", encoding="utf-8") as f:
-        dataset = json.load(f)
-    logger.info(
-        "read_dataset: loaded %d entries",
-        len(dataset) if hasattr(dataset, "__len__") else 0,
-    )
+        dataset = json5.load(f)
+    logger.info("loaded %d entries", len(dataset) if hasattr(dataset, "__len__") else 0)
     return dataset
 
 
 def get_pdf_text(file_path):
-    logger.info("get_pdf_text: reading PDF %s", file_path)
+    logger.info("reading PDF %s", file_path)
     reader = PdfReader(file_path)
 
     page_count = len(reader.pages)
-    logger.debug("get_pdf_text: page_count=%d", page_count)
+    logger.debug("page_count=%d", page_count)
     assert page_count > 0, "PDF has no pages"
     assert page_count == 1, "PDF has more than one page"
 
-    # return normalize_structure(reader.pages[0].extract_text())
-    text = reader.pages[0].extract_text()
-    logger.debug(
-        "get_pdf_text: extracted text length=%d", len(text) if text is not None else 0
-    )
+    text = normalize_text(reader.pages[0].extract_text())
     return text
 
 
 def create_pydantic_model(schema: Dict[str, Any]) -> BaseModel:
-    logger.debug(
-        "create_pydantic_model: creating model for schema with %d fields", len(schema)
-    )
+    # logger.debug("creating model for schema with %d fields", len(schema))
     fields = {
         key: (str | None, Field(default=None, description=value))
         for key, value in schema.items()
     }
     model = create_model("DynamicModel", **fields)
-    logger.debug(
-        "create_pydantic_model: model created with fields=%s", list(fields.keys())
-    )
+    # logger.debug("model created with fields=%s", list(fields.keys()))
     return model
 
 
 def process_dataset(dataset, data_folder):
-    logger.info("process_dataset: starting processing of dataset")
+    logger.info("starting processing of dataset")
     for i, data in enumerate(dataset):
         if "pdf_text" in data:
-            logger.debug("process_dataset: [%d] skipping already processed item", i)
+            data["pdf_text"] = normalize_text(data["pdf_text"])
             continue
 
         elif "pdf_path" in data:
-            logger.debug("process_dataset: [%d] reading PDF at %s", i, data["pdf_path"])
-
             pdf_path = os.path.join(data_folder, data["pdf_path"])
             try:
                 pdf_text = get_pdf_text(pdf_path)
                 data.update({"pdf_text": pdf_text})
             except Exception as e:
-                logger.exception(
-                    "process_dataset: [%d] failed to process %s: %s", i, pdf_path, e
-                )
+                logger.exception("failed to process %s: %s", pdf_path, e)
                 raise
 
-        # TODO see with raise something here
         if "extraction_schema" not in data:
             logger.warning(
-                "process_dataset: [%d] missing extraction_schema, skipping pydantic model creation",
-                i,
+                "missing extraction_schema, skipping pydantic model creation"
             )
             continue
         else:
@@ -137,9 +116,9 @@ def process_dataset(dataset, data_folder):
                 {"pydantic_model": create_pydantic_model(data["extraction_schema"])}
             )
 
-        logger.info("process_dataset: [%d] processed successfully", i)
+        logger.info("processed item %d successfully", i)
 
-    logger.info("process_dataset: completed processing")
+    logger.info("completed processing")
     return dataset
 
 
@@ -148,9 +127,9 @@ def write_dataset(dataset, filename, data_folder):
     os.makedirs(data_folder, exist_ok=True)
 
     path = os.path.join(data_folder, filename)
-    logger.info("write_dataset: writing dataset to %s", path)
+    logger.info("writing dataset to %s", path)
 
     with open(path, "w+", encoding="utf-8") as f:
-        json.dump(dataset, f, indent=2, ensure_ascii=False)
+        json5.dump(dataset, f, indent=2, ensure_ascii=False)
 
-    logger.info("write_dataset: dataset written successfully")
+    logger.info("dataset written successfully")

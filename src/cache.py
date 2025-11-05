@@ -5,7 +5,10 @@ import os
 import pickle
 from collections import defaultdict
 
+from logger import get_logger
 from rule import Rule
+
+logger = get_logger(__name__)
 
 
 class CacheItem:
@@ -79,24 +82,26 @@ class RulesList:
             self.curr = node
         self.length += 1
 
-    def try_extract(self, text: str) -> tuple[str | None, bool]:
-        """Try to extract text using rules, increment weight on match.
-
-        Returns:
-            tuple[str | None, bool]: (extracted_text, rule_matched)
-                - extracted_text: The extracted value (can be None for empty rules)
-                - rule_matched: True if a rule successfully validated, False otherwise
-        """
+    def try_extract(self, text: str) -> str | None:
+        """Try to extract text using rules, increment weight on match."""
         for node in self:
-            rule = node.item
-            extracted_text = rule.apply(text)
-            print(f"Extracted text: {extracted_text}")
-            print(rule.validate(extracted_text))
-            if rule.validate(extracted_text):
-                rule.increment()
+            cache_item = node.item
+            extracted_text = cache_item.apply(text)
+            if cache_item.validate(extracted_text):
+                logger.debug(
+                    "Rule matched - Type: %s, Current weight: %d",
+                    cache_item.rule.type,
+                    cache_item.weight,
+                )
+                cache_item.increment()
+                logger.debug(
+                    "✓ Incremented rule weight: %d → %d",
+                    cache_item.weight - 1,
+                    cache_item.weight,
+                )
                 self.update(node)
-                return extracted_text, True
-        return None, False
+                return extracted_text
+        return None
 
     def update(self, node: Node):
         """Update node position by bubbling up based on weight."""
@@ -156,14 +161,10 @@ class Cache:
         self.fields[field].add_rule(rule)
 
     def try_extract(self, field, text):
-        """Try extracting using cached rules for a field.
-
-        Returns:
-            tuple[str | None, bool]: (extracted_text, rule_matched)
-        """
+        """Try extracting using cached rules for a field."""
         rules = self.fields[field]
-        extracted_text, matched = rules.try_extract(text)
-        return extracted_text, matched
+        extracted_text = rules.try_extract(text)
+        return extracted_text
 
     def save_to_file_json(self, filename: str, filepath: str):
         """Save cache to a JSON file."""
