@@ -1,4 +1,3 @@
-import logging
 import re
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
@@ -62,7 +61,12 @@ class Rule(BaseModel):
             return None
 
     def validate(self, text: Optional[str]) -> bool:
-        """Validates the text against the validation regex."""
+        """Validates the text against the validation regex.
+
+        Special handling for __NULL__ marker from conditional_null strategy:
+        - If text is "__NULL__", it should match a validation_regex for null values
+        - For non-null values, the regex should NOT match "__NULL__"
+        """
         if not text:
             return False
         try:
@@ -77,11 +81,8 @@ def create_rule_generation_prompt(
     field_name: str,
     field_value: str,
     field_description: str,
-    all_fields: List[str],
+    other_keywords: List[str],
 ) -> str:
-    other_keywords = ", ".join(
-        [f"'{fname}'" for fname in all_fields if fname != field_name]
-    )
     return rule_generation_prompt_template_en.format(
         text=text,
         field_name=field_name,
@@ -108,7 +109,12 @@ def _execute_position_rule(rule: Rule, text: str) -> Optional[str]:
 
 
 def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
-    """Applies a 'keyword' type rule."""
+    """Applies a 'keyword' type rule.
+
+    Special behavior for 'conditional_null' strategy:
+    - Returns "__NULL__" when field is genuinely null (empty between keywords)
+    - Returns None when rule doesn't match (has value or stop_keyword not found)
+    """
     if not rule.keyword:
         return None
 
@@ -146,18 +152,85 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
             return None
 
     elif rule.strategy == "conditional_null":
-        # This rule's job is to confirm a value is null.
-        # It succeeds *if* the text between keyword and stop_keyword is empty.
-        if not rule.stop_keyword:
-            return None  # This strategy requires a stop_keyword
+        """
+        Robust conditional_null implementation:
+        
+        This strategy detects when a field is genuinely null (empty/missing).
+        It checks if there's only whitespace between the keyword and stop_keyword.
+        
+        **Enhanced for last fields:** If stop_keyword is None or not found,
+        checks from keyword to end of text (for fields at the end of document).
+        
+        Returns:
+        - "__NULL__": Field is genuinely null (success case)
+        - None: Rule doesn't match (failure case - field has value)
+        
+        Example success cases (should return "__NULL__"):
+            1. With stop_keyword: "Categoria\n\nEndereco Profissional"
+               keyword="Categoria", stop_keyword="Endereco Profissional"
+               → Between keywords: "\n\n" (only whitespace) → Return "__NULL__"
+            
+            2. Last field (no stop_keyword): "Situacao\t"
+               keyword="Situacao", stop_keyword=None
+               → After keyword: "\t" (only whitespace) → Return "__NULL__"
+            
+            3. Last field (stop_keyword not found): "Situacao\n"
+               keyword="Situacao", stop_keyword="NextField"
+               → stop_keyword not found, text after: "\n" (only whitespace) → Return "__NULL__"
+               
+        Example failure cases (should return None):
+            1. Has value: "Categoria\nADVOGADO\nEndereco Profissional"
+               → Between keywords: "\nADVOGADO\n" (has content) → Return None
 
-        # Check if the text immediately after the keyword (when stripped)
-        # starts with the stop_keyword.
-        if text_after.strip().startswith(rule.stop_keyword):
-            return None  # Success: The value is correctly identified as null.
+            2. Last field with value: "Situacao\nSituação Regular"
+               → After keyword: "\nSituação Regular" (has content) → Return None
+        """
+        # Determine the text region to check
+        if rule.stop_keyword:
+            # Try to find the stop_keyword
+            stop_pos = text_after.find(rule.stop_keyword)
+
+            if stop_pos != -1:
+                # Stop keyword found - check text between keyword and stop_keyword
+                between_text = text_after[:stop_pos]
+            else:
+                # Stop keyword NOT found - this could be the last field
+                # Check from keyword to end of text
+                between_text = text_after
+                logger.debug(
+                    "conditional_null: stop_keyword '%s' not found, treating as last field",
+                    rule.stop_keyword,
+                )
         else:
-            # Failure: There is text between the keywords.
-            # This rule's logic does not match.
+            # No stop_keyword specified - this is the last field
+            # Check from keyword to end of text
+            between_text = text_after
+            logger.debug(
+                "conditional_null: no stop_keyword specified, treating as last field"
+            )
+
+        # Check if there's only whitespace in the region
+        if not between_text.strip():
+            # Success! The field is genuinely null (empty)
+            if rule.stop_keyword and text_after.find(rule.stop_keyword) != -1:
+                logger.debug(
+                    "conditional_null: Field is NULL - only whitespace between '%s' and '%s'",
+                    rule.keyword,
+                    rule.stop_keyword,
+                )
+            else:
+                logger.debug(
+                    "conditional_null: Field is NULL - only whitespace after '%s' (last field)",
+                    rule.keyword,
+                )
+            return "__NULL__"  # Special marker indicating genuine null
+        else:
+            # Failure - there's actual content in the region
+            # This means the field has a value, so this null-detection rule doesn't match
+            logger.debug(
+                "conditional_null: Field has value (not null) - found content: '%s'",
+                between_text.strip()[:50],  # Log first 50 chars
+            )
             return None
 
     return None
@@ -211,19 +284,16 @@ def _validate_syntax(
     response: Dict[str, Any],
     field_name: str,
     attempt: int,
-    logger: logging.Logger,
 ) -> Tuple[Optional[Rule], Optional[str]]:
     stage = "syntax_validation"
     try:
         # 4. Validate Syntax (Schema)
         rule = Rule.model_validate(response.get("structured_response", {}))
-        extra = (
-            {
-                "field": field_name,
-                "attempt": attempt,
-                "stage": stage,
-            },
-        )
+        extra = {
+            "field": field_name,
+            "attempt": attempt,
+            "stage": stage,
+        }
         logger.debug(
             f"Syntax validation successful: {extra}",
         )
@@ -233,15 +303,13 @@ def _validate_syntax(
             f"- ATTEMPT {attempt} FAILED: The JSON was malformed or failed schema validation. "
             f"Error: {e}. Make sure to return ONLY valid JSON matching the schema."
         )
-        extra = (
-            {
-                "field": field_name,
-                "attempt": attempt,
-                "stage": stage,
-                "error": str(e),
-                "raw_response": response,
-            },
-        )
+        extra = {
+            "field": field_name,
+            "attempt": attempt,
+            "stage": stage,
+            "error": str(e),
+            "raw_response": response,
+        }
         logger.warning(
             f"Syntax validation failed: {extra}",
         )
@@ -254,24 +322,65 @@ def _validate_extraction_rule(
     field_value: str,
     field_name: str,
     attempt: int,
-    logger: logging.Logger,
 ) -> Optional[str]:
+    """Validate that the rule extracts the expected value.
+
+    Special handling for conditional_null strategy:
+    - If field_value is None, expect rule to return "__NULL__"
+    - If field_value is not None, rule should NOT return "__NULL__"
+    """
     stage = "extraction_validation"
     extracted_val = None
     try:
         # 5. Validate Rule Execution (the 'rule')
-        extracted_val = execute_rule(rule, text)  # Your re.search() function
+        extracted_val = execute_rule(rule, text)
 
-        if extracted_val == field_value:
-            extra = (
-                {
+        # Special handling for conditional_null with None values
+        if field_value is None:
+            # Field is supposed to be null
+            if extracted_val == "__NULL__":
+                extra = {
                     "field": field_name,
                     "attempt": attempt,
                     "stage": stage,
-                    "rule": rule.rule,
+                    "strategy": rule.strategy,
+                    "extracted": "__NULL__",
+                    "note": "Correctly identified null field",
+                }
+                logger.debug(
+                    f"Extraction rule validation successful (null field): {extra}",
+                )
+                return None  # Success
+            else:
+                # Expected null but got something else
+                feedback = (
+                    f"- ATTEMPT {attempt} FAILED: Expected NULL field.\n"
+                    f"  - Extracted: `{extracted_val}`\n"
+                    f"  - Expected: NULL (no value)\n"
+                    f"  - Your rule should use 'conditional_null' strategy "
+                    f"to correctly detect null fields."
+                )
+                extra = {
+                    "field": field_name,
+                    "attempt": attempt,
+                    "stage": stage,
                     "extracted": extracted_val,
-                },
-            )
+                    "expected": "NULL",
+                }
+                logger.warning(
+                    f"Extraction rule failed - expected null: {extra}",
+                )
+                return feedback
+
+        # Normal case: field has a value
+        if extracted_val == field_value:
+            extra = {
+                "field": field_name,
+                "attempt": attempt,
+                "stage": stage,
+                "rule": rule.rule,
+                "extracted": extracted_val,
+            }
             logger.debug(
                 f"Extraction rule validation successful: {extra}",
             )
@@ -285,16 +394,14 @@ def _validate_extraction_rule(
             f"  - Expected: `{field_value}`\n"
             f"Please create a more precise regex."
         )
-        extra = (
-            {
-                "field": field_name,
-                "attempt": attempt,
-                "stage": stage,
-                "rule": rule.rule,
-                "extracted": extracted_val,
-                "expected": field_value,
-            },
-        )
+        extra = {
+            "field": field_name,
+            "attempt": attempt,
+            "stage": stage,
+            "rule": rule.rule,
+            "extracted": extracted_val,
+            "expected": field_value,
+        }
         logger.warning(
             f"Extraction rule mismatch: {extra}",
         )
@@ -306,15 +413,13 @@ def _validate_extraction_rule(
             f"- ATTEMPT {attempt} FAILED: Error executing 'rule' regex. "
             f"Rule: `{rule.rule}`. Error: {e}"
         )
-        extra = (
-            {
-                "field": field_name,
-                "attempt": attempt,
-                "stage": stage,
-                "rule": rule.rule,
-                "error": str(e),
-            },
-        )
+        extra = {
+            "field": field_name,
+            "attempt": attempt,
+            "stage": stage,
+            "rule": rule.rule,
+            "error": str(e),
+        }
         logger.warning(
             f"Extraction rule execution error: {extra}",
         )
@@ -326,21 +431,28 @@ def _validate_validation_regex(
     field_value: str,
     field_name: str,
     attempt: int,
-    logger: logging.Logger,
 ) -> Optional[str]:
+    """Validate that validation_regex correctly matches the expected value.
+
+    Special handling for conditional_null:
+    - If field_value is None, validation_regex should match "__NULL__"
+    - Otherwise, validation_regex should match the actual field_value
+    """
     stage = "validation_regex_validation"
     try:
         # 6. Validate Validation Execution (the 'validation_regex')
-        if re.match(rule.validation_regex, field_value):
-            extra = (
-                {
-                    "field": field_name,
-                    "attempt": attempt,
-                    "stage": stage,
-                    "validation_regex": rule.validation_regex,
-                    "value_matched": field_value,
-                },
-            )
+
+        # For null fields, we need to validate against "__NULL__" marker
+        value_to_validate = "__NULL__" if field_value is None else field_value
+
+        if re.match(rule.validation_regex, value_to_validate):
+            extra = {
+                "field": field_name,
+                "attempt": attempt,
+                "stage": stage,
+                "validation_regex": rule.validation_regex,
+                "value_matched": value_to_validate,
+            }
             logger.debug(
                 f"Validation regex validation successful: {extra}",
             )
@@ -350,18 +462,17 @@ def _validate_validation_regex(
         feedback = (
             f"- ATTEMPT {attempt} FAILED: The 'validation_regex' was wrong.\n"
             f"  - Regex: `{rule.validation_regex}`\n"
-            f"  - Did not match the expected value: `{field_value}`\n"
-            f"  - Please create a 'validation_regex' that fully matches the expected value."
+            f"  - Did not match the expected value: `{value_to_validate}`\n"
+            f"  - Please create a 'validation_regex' that fully matches "
+            f"the expected value."
         )
-        extra = (
-            {
-                "field": field_name,
-                "attempt": attempt,
-                "stage": stage,
-                "validation_regex": rule.validation_regex,
-                "expected_to_match": field_value,
-            },
-        )
+        extra = {
+            "field": field_name,
+            "attempt": attempt,
+            "stage": stage,
+            "validation_regex": rule.validation_regex,
+            "expected_to_match": value_to_validate,
+        }
         logger.warning(
             f"Validation regex mismatch: {extra}",
         )
@@ -373,19 +484,81 @@ def _validate_validation_regex(
             f"- ATTEMPT {attempt} FAILED: Error in 'validation_regex'. "
             f"Regex: `{rule.validation_regex}`. Error: {e}"
         )
-        extra = (
-            {
-                "field": field_name,
-                "attempt": attempt,
-                "stage": stage,
-                "validation_regex": rule.validation_regex,
-                "error": str(e),
-            },
-        )
+        extra = {
+            "field": field_name,
+            "attempt": attempt,
+            "stage": stage,
+            "validation_regex": rule.validation_regex,
+            "error": str(e),
+        }
         logger.warning(
             f"Validation regex execution error: {extra}",
         )
         return feedback
+
+
+def _validate_no_other_keywords(
+    field_value: Optional[str],
+    other_keywords: List[str],
+    field_name: str,
+    attempt: int,
+) -> Optional[str]:
+    """Check if the extracted value contains forbidden keywords from other fields.
+
+    This guard rail ensures that the extracted value is not just another field's
+    name/keyword, which would indicate an incorrect extraction rule.
+
+    Special handling for None values:
+    - If field_value is None, skip this validation (null fields can't be contaminated)
+    """
+    stage = "keyword_contamination_validation"
+
+    # Skip validation for None values (null fields)
+    if field_value is None:
+        extra = {
+            "field": field_name,
+            "attempt": attempt,
+            "stage": stage,
+            "field_value": None,
+            "note": "Skipping keyword validation for null field",
+        }
+        logger.debug(
+            f"No keyword contamination check needed for null field: {extra}",
+        )
+        return None  # Success - no validation needed for null
+
+    for keyword in other_keywords:
+        # Check if the extracted value *is* or *contains* another keyword.
+        # Using \b (word boundary) is robust.
+        if re.search(r"\b" + re.escape(keyword) + r"\b", field_value, re.IGNORECASE):
+            feedback = (
+                f"- ATTEMPT {attempt} FAILED: The value '{field_value}' "
+                f"is or contains a forbidden keyword: '{keyword}'. "
+                f"This is incorrect. The 'rule' or 'validation_regex' is wrong."
+            )
+            extra = {
+                "field": field_name,
+                "attempt": attempt,
+                "stage": stage,
+                "field_value": field_value,
+                "forbidden_keyword": keyword,
+            }
+            logger.warning(
+                f"Keyword contamination detected: {extra}",
+            )
+            return feedback
+
+    # Success - no forbidden keywords found
+    extra = {
+        "field": field_name,
+        "attempt": attempt,
+        "stage": stage,
+        "field_value": field_value,
+    }
+    logger.debug(
+        f"No keyword contamination detected: {extra}",
+    )
+    return None
 
 
 def generate_robust_rule(
@@ -402,7 +575,6 @@ def generate_robust_rule(
     Returns:
         tuple: (rule, total_prompt_tokens, total_completion_tokens)
     """
-    # TODO Clean everything here
     total_prompt_tokens = 0
     total_completion_tokens = 0
 
@@ -412,9 +584,12 @@ def generate_robust_rule(
             "field_value": field_value,
         },
     )
+
+    other_keywords = [fname for fname in all_fields if fname != field_name]
+
     # 1. Prepare the base prompt
     base_prompt = create_rule_generation_prompt(
-        text, field_name, field_value, field_description, all_fields
+        text, field_name, field_value, field_description, other_keywords
     )
     feedback_history: List[str] = []  # Stores feedback from failures
 
@@ -434,24 +609,28 @@ def generate_robust_rule(
         # 2. Build the prompt with feedback (if any)
         current_prompt = base_prompt
         if feedback_history:
+            # Join feedback neatly with separators
             feedback_str = "\n".join(feedback_history)
+
+            # Append feedback section using f-string for clarity
             current_prompt += f"""
-            ---
-            You have tried before. Analyze the feedback and generate a new rule.
+---
+You have tried before. Analyze the feedback and generate a new rule.
 
-            FEEDBACK FROM PREVIOUS ATTEMPTS:
-            {feedback_str}
+### FEEDBACK FROM PREVIOUS ATTEMPTS ({len(feedback_history)} total):
+{feedback_str}
 
-            Generate a new and CORRECTED rule JSON:
-            """
-            extra = (
-                {
-                    "current_attempt": current_attempt,
-                    "feedback_count": len(feedback_history),
-                },
-            )
+Now, generate a **new and corrected** rule below:
+"""
+
+            # Collect debug info in a clear, single-line dict
+            extra_info = {
+                "attempt_number": current_attempt,
+                "feedback_entries": len(feedback_history),
+            }
+
             logger.debug(
-                f"Feedback added to prompt for attempt {current_attempt}: {extra}"
+                f"Added feedback context to prompt for attempt #{current_attempt}: {extra_info}"
             )
 
         # 3. Invoke Agent (LLM)
@@ -460,9 +639,20 @@ def generate_robust_rule(
                 "current_attempt": current_attempt,
             },
         )
-        response = agent_rule.invoke(
-            {"messages": [{"role": "user", "content": current_prompt}]}
-        )
+        try:
+            response = agent_rule.invoke(
+                {"messages": [{"role": "user", "content": current_prompt}]}
+            )
+        except Exception as e:
+            logger.debug(
+                f"Error invoking agent for rule generation on attempt {current_attempt} for field '{field_name}': {e}",
+            )
+            feedback = (
+                f"- ATTEMPT {current_attempt} FAILED: Error invoking language model. "
+                f"Error: {e}"
+            )
+            feedback_history.append(feedback)
+            continue
 
         # Track token usage from this attempt
         ai_message = response["messages"][-1]
@@ -479,14 +669,14 @@ def generate_robust_rule(
                 ].get("completion_tokens", 0)
 
         # 4. Validate Syntax
-        rule, feedback = _validate_syntax(response, field_name, current_attempt, logger)
+        rule, feedback = _validate_syntax(response, field_name, current_attempt)
         if feedback:
             feedback_history.append(feedback)
             continue  # Try again
 
         # 5. Validate Rule Execution
         feedback = _validate_extraction_rule(
-            rule, text, field_value, field_name, current_attempt, logger
+            rule, text, field_value, field_name, current_attempt
         )
         if feedback:
             feedback_history.append(feedback)
@@ -494,14 +684,23 @@ def generate_robust_rule(
 
         # 6. Validate Validation Regex
         feedback = _validate_validation_regex(
-            rule, field_value, field_name, current_attempt, logger
+            rule, field_value, field_name, current_attempt
         )
         if feedback:
             feedback_history.append(feedback)
             continue  # Try again
 
-        # 7. Success!
-        # All three validations (Syntax, Rule, Validation) passed.
+        # 7. Validate No Other Keywords (Guard Rail)
+        # Prepare other_keywords list (exclude current field name)
+        feedback = _validate_no_other_keywords(
+            field_value, other_keywords, field_name, current_attempt
+        )
+        if feedback:
+            feedback_history.append(feedback)
+            continue  # Try again
+
+        # 8. Success!
+        # All validations (Syntax, Rule, Validation, No Keywords) passed.
         extra = (
             {
                 "field": field_name,
@@ -514,7 +713,7 @@ def generate_robust_rule(
         )
         return rule, total_prompt_tokens, total_completion_tokens
 
-    # 8. Failure (after max_attempts)
+    # 9. Failure (after max_attempts)
     extra = (
         {
             "field": field_name,
