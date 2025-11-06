@@ -10,236 +10,126 @@ load_dotenv()
 logger = get_logger(__name__)
 
 
-extract_prompt_pt = r"""
-Você receberá um trecho de texto extraído de um documento.
-
-Com base nesse texto, extraia **exclusivamente** as informações solicitadas e retorne o resultado em **formato JSON**, seguindo rigorosamente o esquema fornecido.
-
-Texto de entrada:
-{text}
-
-Esquema JSON esperado:
-{schema}
-
-Instruções importantes:
-- Se uma informação não estiver presente no texto, atribua o valor **null** ao campo correspondente.
-- Não adicione informações que não estejam explícitas no texto.
-- Retorne **apenas** o JSON, sem comentários, explicações ou texto adicional.
-- Garanta que o JSON seja **válido**, **bem formatado** e **compatível com o esquema**.
-"""
-
 extract_prompt_en = r"""
 You are a text extraction robot. Your task is to extract information from the `Input text` according to the `Extraction Schema`.
 
 ---
 **Input text:**
 {text}
-
 ---
 **Extraction Schema:**
 {schema}
+---
+**CRITICAL INSTRUCTIONS:**
+
+1. **EXTRACT VERBATIM:** Extract text *exactly as it appears* in the input. Preserve original casing and punctuation.
+   - Example:
+     Input: "Telefone Profissional\nSITUAÇÃO REGULAR"
+     Schema: {{"situacao": "Situação do profissional"}}
+     ✅ Correct: {{"situacao": "SITUAÇÃO REGULAR"}}
+     ❌ Incorrect: {{"situacao": "Regular"}}
+
+2. **USE SCHEMA DESCRIPTION:** Each field's description defines its expected format,
+   If a text near an anchor (like "Categoria") does not match the description, return `None` for that field.
+
+3. **STRICT NULL POLICY:**
+   If the value is missing or invalid, assign `None`,
+   Never infer or guess from nearby text.
 
 ---
-**Example of Correct Extraction:**
-
-* **Example Input Text Snippet:**
-    "...
-    Telefone Profissional
-    SITUAÇÃO REGULAR
-    ..."
-
-* **Example Schema:**
-    `{{"situacao": "Situação do profissional"}}`
-
-* **Correct Output (Verbatim):**
-    `{{"situacao": "SITUAÇÃO REGULAR"}}`
-
-* **Incorrect Output (Interpreted/Simplified):**
-    `{{"situacao": "REGULAR"}}`
+**Example of "STRICT NULL POLICY":**
+Input: "... Categoria Endereco Profissional ..."
+Schema: {{"categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA"}}
+✅ Correct: {{"categoria": None}}
+❌ Incorrect: {{"categoria": "Endereco Profissional"}}
 ---
-**Important Instructions:**
-- **CRITICAL:** You must extract the text *verbatim* (exactly as it appears), as shown in the CORRECT example. Do not summarize, interpret, simplify, or rephrase.
-- If any information is missing from the text, assign the value **null** to the corresponding field.
-- Ensure your output contains **only** the JSON and nothing else (no comments, no explanations).
 """
 
-# rule_generation_prompt_template_en = r"""
-# You are an expert automation engineer specializing in robust text extraction.
-# Your task is to generate **two** mandatory items:
-# 1.  A **single, robust extraction rule** for a specific data field.
-# 2.  A **mandatory `validation_regex`** to verify the format of the extracted data.
-
-# The goal is to create an "atomic" rule that can find this value in future documents. The rule MUST be based on stable "anchor" keywords (like "Inscrição", "Endereço Profissional") or patterns directly related to **itself**, not based on the position of *other* fields.
-
-# **Crucial Constraint: What to AVOID**
-# * **DO NOT** create rules that depend on the relative position of *other* fields.
-# * **Bad Rule (Coupled):** "Find the text on the line after the 'inscricao' field."
-# * **Good Rule (Atomic):** "Find the text on the line after the keyword 'Subseção'."
-
-# ---
-# **ANALYSIS PATHS:**
-
-# **PATH A: If `field_value` is NOT null (e.g., "JOANA D'ARC")**
-# 1.  **Locate:** Find the `field_value` in the `full_text`.
-# 2.  **Find Anchor:** Analyze the text *immediately* surrounding the value to find a stable, unique keyword (like "Nome", "Inscrição", etc.).
-# 3.  **Generate Extraction Rule:** Create the best possible extraction rule (`type`, `rule`, etc.).
-# 4.  **Generate Validation Regex:** Analyze the `field_value` and create a `validation_regex` that matches its *format*. **This is a mandatory step.**
-
-# **PATH B: If `field_value` IS null**
-# 1.  **Locate Anchor:** Find the "anchor" keyword for the field (e.g., "Telefone Profissional") in the `full_text`.
-# 2.  **Find Stop-Anchor:** Analyze the text *immediately following* this anchor. Find the *next* field's anchor (e.g., "SITUAÇÃO REGULAR").
-# 3.  **Generate Extraction Rule:** Create a `conditional_null` rule.
-# 4.  **Generate Validation Regex:** For a `null` value, the `validation_regex` **must be `null`**.
-
-# ---
-# **INPUTS:**
-
-# **1. Full Text (`full_text`):**
-# {text}
-
-# **2. Field to Analyze (`field_name`):**
-# "{field_name}"
-
-# **3. Extracted Value (`field_value`):** (This could be `null` or `None`)
-# "{field_value}"
-
-# **4. Field Description (`field_description`):**
-# "{field_description}"
-
-# ---
-# **OUTPUT INSTRUCTIONS:**
-
-# Return **only** a single, valid JSON object for the generated rule, strictly adhering to the following `Rule` schema.
-# **Both the extraction rule and the `validation_regex` are mandatory outputs** (unless `field_value` is `null`).
-
-# **Rule Schema:**
-# {{
-#     "type": "The type of rule. Use 'regex' whenever possible.",
-#     "rule": "The Python-compatible regex pattern. It MUST include a capture group ( ).",
-#     "keyword": "The 'anchor' keyword (use if 'regex' is not possible).",
-#     "strategy": "The strategy for the 'keyword' (e.g., 'next_line', 'multiline_until_stop', 'conditional_null').",
-#     "stop_keyword": "The stopping keyword for the strategy.",
-#     "line_number": "The line number (use 'position' only as a last resort).",
-#     "validation_regex": "MANDATORY. A regex to validate the *format* of the extracted value (e.g., '^\d{{6}}$'). Must be `null` if and only if `field_value` is `null`."
-# }}
-
-# **Example for a `regex` rule (PATH A):**
-# {{
-#     "type": "regex",
-#     "rule": "Inscrição[^\d]*(\d{{6}})",
-#     "keyword": null,
-#     "strategy": null,
-#     "stop_keyword": null,
-#     "line_number": null,
-#     "validation_regex": "^\d{{6}}$"
-# }}
-
-# **Example for a `keyword` rule (PATH A):**
-# {{
-#     "type": "keyword",
-#     "rule": null,
-#     "keyword": "Subseção",
-#     "strategy": "next_line",
-#     "stop_keyword": null,
-#     "line_number": null,
-#     "validation_regex": "^[A-Z\s-]+$"
-# }}
-
-# **Example for a `conditional_null` rule (PATH B):**
-# {{
-#     "type": "keyword",
-#     "rule": null,
-#     "keyword": "Telefone Profissional",
-#     "strategy": "conditional_null",
-#     "stop_keyword": "SITUAÇÃO",
-#     "line_number": null,
-#     "validation_regex": null
-# }}
-
-# **Your Turn:**
-# Generate the rule for the field `"{field_name}"`.
-# """
-
 rule_generation_prompt_template_en = r"""
-You are an expert automation engineer specializing in robust text extraction.
-Your task is to generate **two** mandatory items:
-1.  A **single, robust extraction rule** for a specific data field.
-2.  A **mandatory, high-quality `validation_regex`** to verify the format of the extracted data.
+You are an expert automation engineer specializing in **robust text extraction** from semi-structured documents.
+Your task is to generate **a single, robust extraction rule** for a specific data field.
 
-The goal is to create an "atomic" rule that can find this value in future documents. The rule MUST be based on stable "anchor" keywords (like "Inscrição", "Endereço Profissional") or patterns directly related to **itself**, not based on the position of *other* fields.
+The goal is to create an **atomic rule** that reliably finds this value in future documents.
+The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Endereço Profissional") or patterns directly related to the field itself, **not the position of other fields**.
+
+---
+**SYSTEM-LEVEL ROBUSTNESS REQUIREMENTS**
+
+1. **Stable Anchors Only:** Rules must rely on stable textual anchors (labels or keywords), **never visual layout, indentation, or order**.
+2. **Cross-Field Independence:** Each rule must work independently, even if other fields are missing or reordered.
+3. **Invariant to spacing, capitalization, and accents:** Regex should be case-insensitive (`(?i)`) and tolerant to minor spacing or punctuation variations.
+4. **Anchor Proximity:** Capture text **within 1–2 lines of the anchor**, not from distant parts of the document.
+5. **No Document-Specific Values:** Avoid hardcoding specific values from the current document.
 
 ---
 **CRUCIAL CONSTRAINTS: WHAT TO AVOID**
 
-1.  **Coupled Rules:**
-    * **Bad Rule (Coupled):** "Find the text on the line after the 'inscricao' field."
-    * **Good Rule (Atomic):** "Find the text on the line after the keyword 'Subseção'."
+1. **Coupled Rules**
+   * Bad: "Find the text on the line after the 'inscricao' field."
+   * Good: "Find the text immediately after the keyword 'Subseção'."
 
-2.  **Keyword vs. Value Confusion (VERY IMPORTANT):**
-    * The **Extraction Rule** (`rule`) MUST capture the *value* (e.g., "SITUAÇÃO REGULAR"), not the *anchor* (e.g., "Situação").
-    * **Bad Rule:** `(Situação)`
-    * **Good Rule:** `Situação\s+([^\n]+)`
+2. **Keyword vs. Value Confusion**
+   * Extraction Rule must capture the **value**, not the anchor.
+   * Bad: `(Situação)` → matches anchor, not value.
+   * Good: `Situação\s+([^\n]+)` → captures the actual value.
 
-3.  **Permissive Validation:**
-    * The **`validation_regex`** MUST be specific. It must *fail* if it matches a keyword from another field.
-    * **Bad Validation:** `^[A-Z\s]+$` (This is lazy; it would incorrectly match "Categoria" for the "subsecao" field).
-    * **Good Validation:** `^(?!(Categoria|Situação|Endereço|Nome)).*[A-Z\s-]+$` (This **negative lookahead** ensures it's not another field's data).
-
----
-**ANALYSIS PATHS:**
-
-**PATH A: If `field_value` is NOT null (e.g., "JOANA D'ARC")**
-1.  **Locate:** Find the `field_value` in the `full_text`.
-2.  **Find Anchor:** Analyze the text *immediately* surrounding the value to find a stable, unique keyword (e.g., "Nome", "Inscrição").
-3.  **Generate Extraction Rule:** Create the regex `rule` to capture the `field_value` *after* its anchor.
-4.  **Generate Validation Regex:** Create a `validation_regex` that validates the *format* of the `field_value` and *excludes* keywords from `{other_keywords}`.
-
-**PATH B: If `field_value` IS null**
-1.  **Locate Anchor:** Find the "anchor" keyword for the field (e.g., "Telefone Profissional").
-2.  **Find Stop-Anchor:** Analyze the text *immediately following* this anchor. Find the *next* field's anchor (e.g., "SITUAÇÃO REGULAR").
-3.  **Generate Extraction Rule:** Create a `conditional_null` rule.
-4.  **Generate Validation Regex:** The `validation_regex` **must be `null`**.
+3. **Permissive Validation**
+   * `validation_regex` must be specific and fail on contamination from other fields.
+   * Bad: `^[A-Z\s]+$` → would match unrelated field text.
+   * Good: `^(?!.*(?i:{{other_keywords_joined}}))[A-ZÀ-ÖØ-öø-ÿ'’\-\s]{{2,120}}$`
 
 ---
-**INPUTS:**
+**RULE GENERATION STEPS:**
 
-**1. Full Text (`full_text`):**
+1. Analyze nearby text to find the **most reliable anchor** for the field.
+2. Determine the **typical format** of the expected value (letters, digits, length, accents).
+3. Ensure **cross-field contamination** is prevented using `{other_keywords}`.
+4. Generate the final JSON rule containing:
+   - `rule` (regex capturing only the value)
+   - `validation_regex` (must fail on other field keywords)
+
+---
+**INPUTS**
+
+1. **Full Text (`full_text`):**
 {text}
 
-**2. Field to Analyze (`field_name`):**
+2. **Field to Analyze (`field_name`):**
 "{field_name}"
 
-**3. Extracted Value (`field_value`):** (This could be `null` or `None`)
+3. **Extracted Value (`field_value`):**
 "{field_value}"
 
-**4. Field Description (`field_description`):**
+4. **Field Description (`field_description`):**
 "{field_description}"
 
-**5. Other Field Keywords to Exclude (`other_keywords`):**
-(This is a list of other field names to avoid matching)
+5. **Other Field Keywords to Exclude (`other_keywords`):**
 {other_keywords}
 
 ---
-**OUTPUT INSTRUCTIONS:**
+**OUTPUT INSTRUCTIONS**
 
-Return **only** a single, valid JSON object for the generated rule, strictly adhering to the following `Rule` schema.
-**Both the extraction rule and the `validation_regex` are mandatory outputs** (unless `field_value` is `null`).
+- Both `"rule"` and `"validation_regex"` are mandatory.
+- Extraction regex **must include a capture group `( )` for the value**, not the anchor.
 
-**Rule Schema:**
+**Rule Schema**
 {{
-    "type": "The type of rule. Use 'regex' whenever possible.",
-    "rule": "The Python-compatible regex pattern. It MUST include a capture group ( ) for the *value*, not the anchor.",
-    "keyword": "The 'anchor' keyword (use if 'regex' is not possible).",
-    "strategy": "The strategy for the 'keyword' (e.g., 'next_line', 'multiline_until_stop', 'conditional_null').",
-    "stop_keyword": "The stopping keyword for the strategy.",
-    "line_number": "The line number (use 'position' only as a last resort).",
-    "validation_regex": "MANDATORY. A specific regex to validate the *format* of the extracted value (e.g., '^\d{{6}}$'). Must be `null` if and only if `field_value` is `null`."
+    "type": "regex or keyword",
+    "rule": "Python-compatible regex pattern capturing only the value (null if not applicable)",
+    "keyword": "Anchor keyword (null if regex is used)",
+    "strategy": "Strategy for keyword usage (e.g., 'next_line', 'multiline_until_stop')",
+    "stop_keyword": "Next field anchor (null if not applicable)",
+    "line_number": "Optional, use only if position is necessary",
+    "validation_regex": "Regex to validate the value format, must fail on contamination."
 }}
 
-**Example 1: `regex` rule (PATH A) - Good Validation**
-* **field_name:** "inscricao"
-* **field_value:** "101943"
-* **other_keywords:** ['nome', 'seccional', 'subsecao', ...]
+---
+**EXAMPLES**
+
+1. **Regex Rule**
+* field_name: "inscricao"
+* field_value: "101943"
+* other_keywords: ['nome','seccional','subsecao','categoria','situacao']
 {{
     "type": "regex",
     "rule": "Inscrição[^\d]*(\d{{6}})",
@@ -250,10 +140,10 @@ Return **only** a single, valid JSON object for the generated rule, strictly adh
     "validation_regex": "^\d{{6}}$"
 }}
 
-**Example 2: `keyword` rule (PATH A) - Strong Validation**
-* **field_name:** "subsecao"
-* **field_value:** "Conselho Seccional - Paraná"
-* **other_keywords:** ['nome', 'inscricao', 'seccional', 'categoria', 'situacao']
+2. **Keyword Rule (with value)**
+* field_name: "subsecao"
+* field_value: "Conselho Seccional - Paraná"
+* other_keywords: ['nome','inscricao','seccional','categoria','situacao']
 {{
     "type": "keyword",
     "rule": null,
@@ -261,25 +151,72 @@ Return **only** a single, valid JSON object for the generated rule, strictly adh
     "strategy": "next_line",
     "stop_keyword": null,
     "line_number": null,
-    "validation_regex": "^(?!(Categoria|Situacao|Nome|Inscrição)).*[A-Z\s-]+$"
+    "validation_regex": "^(?!.*(?i:nome|inscricao|seccional|categoria|situacao)).*[A-ZÀ-ÖØ-öø-ÿ''\-\s]+$"
 }}
 
-**Example 3: `conditional_null` rule (PATH B)**
-* **field_name:** "telefone_profissional"
-* **field_value:** null
-* **other_keywords:** ['nome', 'inscricao', 'seccional', 'situacao', 'endereco_profissional']
+3. **Conditional Null Rule (field is empty/null)**
+* field_name: "categoria"
+* field_value: null
+* other_keywords: ['nome','inscricao','endereco','situacao']
 {{
     "type": "keyword",
     "rule": null,
-    "keyword": "Telefone Profissional",
+    "keyword": "Categoria",
     "strategy": "conditional_null",
-    "stop_keyword": "SITUAÇÃO",
+    "stop_keyword": "Endereco Profissional",
     "line_number": null,
-    "validation_regex": null
+    "validation_regex": "^__NULL__$"
 }}
 
-**Your Turn:**
-Generate the rule for the field `"{field_name}"`.
+**IMPORTANT: Conditional Null Strategy**
+
+Use `"conditional_null"` strategy ONLY when the field value is null/empty/missing.
+
+This strategy:
+- Checks if there's only whitespace between `keyword` and `stop_keyword`
+- Returns "__NULL__" if field is genuinely empty
+- Returns None (rule fails) if field has any value
+- **Works for last fields too** (when no field comes after)
+
+Requirements:
+1. `keyword`: The field label/anchor (e.g., "Categoria")
+2. `stop_keyword`: OPTIONAL - Next field name OR null for last field
+3. `validation_regex`: MUST be exactly `"^__NULL__$"` for null fields
+
+**Case 1: Field with next field (stop_keyword specified)**
+Example text for NULL field:
+```
+Categoria
+Endereco Profissional Rua ABC
+```
+Between "Categoria" and "Endereco Profissional" there's only whitespace → NULL
+
+**Case 2: Last field in document (stop_keyword can be null or non-existent)**
+Example text for NULL "situacao" (last field):
+```
+Telefone Profissional +55 11 1234-5678
+Situacao
+```
+After "Situacao" there's only whitespace until end → NULL
+Use: `"stop_keyword": null` or specify next field that won't be found
+
+Example text for NON-NULL field (don't use conditional_null):
+```
+Categoria
+ADVOGADO
+Endereco Profissional Rua ABC
+```
+Between keywords there's "ADVOGADO" → NOT NULL (use different strategy)
+    "strategy": "next_line",
+    "stop_keyword": null,
+    "line_number": null,
+    "validation_regex": "^(?!.*(?i:nome|inscricao|seccional|categoria|situacao)).*[A-ZÀ-ÖØ-öø-ÿ'’\-\s]+$"
+}}
+
+---
+**Your Turn**
+
+Generate the extraction rule for the field `"{field_name}"`.
 """
 
 
@@ -291,6 +228,8 @@ def init_model():
             "gpt-5-mini",
             model_provider="openai",
             api_key=os.getenv("OPENAI_API_KEY"),
+            max_retries=0,
+            timeout=30,
         )
     elif os.getenv("GEMINI_API_KEY"):
         logger.debug("Initializing Gemini model")
@@ -298,6 +237,8 @@ def init_model():
             "gemini-2.5-flash-lite",
             model_provider="google_genai",
             api_key=os.getenv("GEMINI_API_KEY"),
+            max_retries=0,
+            timeout=30,
         )
     else:
         raise ValueError(
