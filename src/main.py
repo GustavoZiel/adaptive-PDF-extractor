@@ -1,8 +1,9 @@
+import json
 import logging
 import os
 import time
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import List
 
 import tyro
@@ -67,6 +68,22 @@ class Args(BaseModel):
         default=None,
         description="Optional custom name for the wandb run",
     )
+    save_ans_disk: bool = Field(
+        default=True,
+        description="Save final answers to disk as JSON file",
+    )
+    save_ans_wandb: bool = Field(
+        default=True,
+        description="Upload final answers to wandb as run file",
+    )
+    save_cache_disk: bool = Field(
+        default=True,
+        description="Save cache to disk as JSON file",
+    )
+    save_cache_wandb: bool = Field(
+        default=True,
+        description="Upload cache to wandb as run file",
+    )
 
 
 def read_cache_file(cache_filename: str, data_folder: str) -> Cache | None:
@@ -99,6 +116,8 @@ def evaluate_performance(extracted: dict, expected: dict) -> float:
         1 for k, v in expected.items() if k in extracted and extracted[k] == v
     )
     pct_correct = (num_correct / num_fields_expected) * 100.0
+    logger.debug("Expected: %s", expected)
+    logger.debug("Extracted: %s", extracted)
     logger.info(
         "Performance: %d/%d fields correct (%.2f%%)",
         num_correct,
@@ -369,9 +388,6 @@ def main(args: Args):
     wandb_logger = None
     if args.use_wandb:
         wandb_logger = WandbLogProperties()
-        # artifact = wandb.Artifact(name="Caches", type="dataset")
-        # TODO Adicionar output das respostas e expected
-        # artifact = wandb.Artifact(name="Outputs", type="dataset")
         set_wandb(args)
 
     dataset = read_dataset(filename=args.dataset_filename, data_folder=args.data_folder)
@@ -387,8 +403,28 @@ def main(args: Args):
     else:
         global_loaded_cache = None
 
+    # # Define which document indices to process
+    # # selected_indices = [0, 74, 211, 1114, 1182, 1664]
+    # selected_indices = [0]
+
+    # # Filter processed_dataset to only include selected indices
+    # filtered_dataset = [
+    #     (idx, data)
+    #     for idx, data in enumerate(processed_dataset)
+    #     if idx in selected_indices
+    # ]
+
+    # logger.info(
+    #     "Processing %d selected documents out of %d total documents",
+    #     len(filtered_dataset),
+    #     len(processed_dataset),
+    # )
+
+    # Collect all answers for final save
+    all_answers = []
+
     # Process each document in the dataset
-    for doc_idx, data in enumerate(processed_dataset[:500], 1):
+    for doc_idx, data in enumerate(processed_dataset, 1):
         start = time.time()
 
         success_fields = []
@@ -431,6 +467,7 @@ def main(args: Args):
 
         # Attempt extraction for each field using cached rules
         ans = {}
+        # for field_name in [f for f in all_fields if f == "categoria"]:
         for field_name in all_fields:
             field_rules_count = len(label_cache.fields[field_name])
             logger.debug(
@@ -441,9 +478,18 @@ def main(args: Args):
 
             if extracted_text is not None:
                 # Extraction succeeded
-                ans[field_name] = extracted_text
+                # Convert __NULL__ marker to None for final output
+                if extracted_text == "__NULL__":
+                    ans[field_name] = None
+                    logger.info(
+                        "✓ Field '%s' extracted: NULL (field is empty)", field_name
+                    )
+                else:
+                    ans[field_name] = extracted_text
+                    logger.info(
+                        "✓ Field '%s' extracted: '%s'", field_name, extracted_text
+                    )
                 success_fields.append(field_name)
-                logger.info("✓ Field '%s' extracted: '%s'", field_name, extracted_text)
             else:
                 # Extraction failed - no cached rule worked
                 failed_fields.append(field_name)
@@ -494,23 +540,32 @@ def main(args: Args):
 
             # Invoke LLM to extract failed fields
             logger.info("Invoking LLM to extract %d failed fields", len(failed_fields))
-            response = agent.invoke(
-                {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": extract_prompt_en.format(
-                                text=text_data,
-                                schema={
-                                    k: v
-                                    for k, v in data["extraction_schema"].items()
-                                    if k in failed_fields
-                                },
-                            ),
-                        }
-                    ]
-                },
-            )
+            try:
+                response = agent.invoke(
+                    {
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": extract_prompt_en.format(
+                                    text=text_data,
+                                    # Providing only the failed fields
+                                    # schema={
+                                    #     k: v
+                                    #     for k, v in data["extraction_schema"].items()
+                                    #     if k in failed_fields
+                                    # },
+                                    # Providing full schema for better context
+                                    schema=data["extraction_schema"],
+                                ),
+                            }
+                        ]
+                    },
+                )
+            except Exception as e:
+                logger.error(
+                    "Error during LLM extraction for document %s: %s", doc_idx, str(e)
+                )
+                continue
 
             # Track LLM1 usage (extractor)
             llm1_calls += 1
@@ -559,17 +614,17 @@ def main(args: Args):
 
             logger.debug("Starting rule generation for %d fields", len(llm_response))
             for field, value in llm_response.items():
-                # Skip None values - no rule can be generated
+                # For None values, we need to generate conditional_null rules
+                # Don't skip them - they are important for detecting empty fields!
                 if value is None:
-                    logger.warning(
-                        "Field '%s' has None value - skipping rule generation",
+                    logger.info(
+                        "Field '%s' has None value - will generate conditional_null rule",
                         field,
                     )
-                    continue
-
-                logger.info(
-                    "Generating rule for field '%s' with value '%s'", field, value
-                )
+                else:
+                    logger.info(
+                        "Generating rule for field '%s' with value '%s'", field, value
+                    )
 
                 # Prepare inputs for rule generation
                 field_description = data["extraction_schema"][field]
@@ -618,7 +673,7 @@ def main(args: Args):
                     # logger.debug("Rule details: %s", rule_object.model_dump())
                     label_cache.fields[field].add_rule(rule_object)
 
-                    if args.cache_filename:
+                    if args.cache_filename and args.save_cache_disk:
                         # Save cache to disk immediately after adding rule
                         label_cache.save_to_file_json(
                             filename=args.cache_filename, filepath=args.data_folder
@@ -652,6 +707,15 @@ def main(args: Args):
         if "expected_answer" in data:
             accuracy_pct = evaluate_performance(ans, data["expected_answer"])
             logger.info("Document %d accuracy: %.2f%%", doc_idx, accuracy_pct)
+
+        # Store answer for final save
+        all_answers.append(
+            {
+                "idx": doc_idx,
+                "expected": data.get("expected_answer", {}),
+                "extracted": ans,
+            }
+        )
 
         # Determine if we achieved fast path success (100% cache hit)
         fast_path_success = len(failed_fields) == 0
@@ -699,54 +763,42 @@ def main(args: Args):
     logger.info("=" * 80)
     logger.info("Pipeline complete - Processed %d documents", len(processed_dataset))
 
-    if args.cache_filename:
-        # if args.use_wandb:
-        #     logger.info("Saving cache artifact to wandb")
-        #     artifact.add_file(
-        #         local_path=f"{args.data_folder}/{args.cache_filename}",
-        #         name="cache.json",
-        #     )
-        #     artifact.save()
+    # Save answers to disk if requested
+    if args.save_ans_disk:
+        ans_filepath = os.path.join(args.data_folder, "final_answers.json")
+        with open(ans_filepath, "w", encoding="utf-8") as f:
+            json.dump(all_answers, f, ensure_ascii=False, indent=4)
+        logger.info("Final answers saved to disk: %s", ans_filepath)
 
+    # Upload answers to wandb if requested
+    if args.save_ans_wandb and args.use_wandb:
+        ans_filepath = os.path.join(args.data_folder, "final_answers.json")
+        # Save temporarily to disk first
+        with open(ans_filepath, "w", encoding="utf-8") as f:
+            json.dump(all_answers, f, ensure_ascii=False, indent=4)
+        # Upload to wandb
+        wandb.save(ans_filepath)
+        logger.info("Final answers uploaded to wandb: %s", ans_filepath)
+
+    # Save cache to disk if requested
+    if args.save_cache_disk and args.cache_filename:
         logger.info("Saving all caches to disk")
         for label, cache in dict_caches.items():
-            if args.cache_filename:
-                cache.save_to_file_json(
-                    filename=args.cache_filename, filepath=args.data_folder
-                )
-                logger.info(
-                    "Final save - Cache for label '%s' saved to: %s",
-                    label,
-                    args.cache_filename,
-                )
+            cache.save_to_file_json(
+                filename=args.cache_filename, filepath=args.data_folder
+            )
+            logger.info(
+                "Final save - Cache for label '%s' saved to: %s",
+                label,
+                args.cache_filename,
+            )
         logger.info("All caches saved successfully")
 
-        # Upload cache file to W&B (not as artifact, just as run file)
-        if args.use_wandb and args.cache_filename:
-            cache_path = os.path.join(args.data_folder, args.cache_filename)
-            wandb.save(cache_path)
-            logger.info("Cache file uploaded to W&B: %s", cache_path)
-
-        # TODO Create a wandb table with final metrics
-        # # Show final plot if enabled
-        # if args.plot_metrics and fig is not None:
-        #     plt.ioff()  # Turn off interactive mode
-        #     logger.info("Displaying final metrics plot")
-        #     print("\n" + "=" * 80)
-        #     print("PIPELINE METRICS SUMMARY")
-        #     print("=" * 80)
-        #     if accuracies:
-        #         print(f"Average Accuracy: {sum(accuracies) / len(accuracies):.2f}%")
-        #         print(f"Max Accuracy: {max(accuracies):.2f}%")
-        #         print(f"Min Accuracy: {min(accuracies):.2f}%")
-        #     if times:
-        #         print(f"Average Processing Time: {sum(times) / len(times):.2f}s")
-        #         print(f"Total Processing Time: {sum(times):.2f}s")
-        #         print(f"Max Processing Time: {max(times):.2f}s")
-        #         print(f"Min Processing Time: {min(times):.2f}s")
-        #     print("=" * 80 + "\n")
-        #     plt.show()  # Keep the plot window open
-        #     logger.info("Plot window closed")
+    # Upload cache file to wandb if requested
+    if args.save_cache_wandb and args.use_wandb and args.cache_filename:
+        cache_path = os.path.join(args.data_folder, args.cache_filename)
+        wandb.save(cache_path)
+        logger.info("Cache file uploaded to wandb: %s", cache_path)
 
     # Finish wandb run
     if args.use_wandb:
