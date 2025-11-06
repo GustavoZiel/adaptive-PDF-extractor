@@ -28,6 +28,7 @@ EXTRACTION_SCHEMA = {
 
 class Args(BaseModel):
     save_path: str = Field(..., description="Path to the data folder.")
+    filename: str = Field(..., description="Filename for the generated dataset.")
     num_samples: int = Field(
         ..., description="Number of samples to generate for the dataset."
     )
@@ -50,7 +51,7 @@ def generate_canonical_record():
         ),
         "endereco_profissional": fake.address().replace("\n", ", "),
         "telefone_profissional": fake.phone_number(),
-        "situacao": "Situação Regular",
+        "situacao": random.choice(["Situação Regular", "Situação Irregular"]),
     }
 
 
@@ -154,14 +155,16 @@ def generate_sample():
             # # Mesmo omitido, o rótulo pode aparecer
             # if random.random() < 0.5:
             #     # ocr_chunks.append(fuzz_text(field.replace("_", " ").title()))
-            ocr_chunks.append(field.replace("_", " ").title())
+            expected_answer[field] = expected_value
+            ocr_chunks.append((field.replace("_", " ").title(), expected_value))
             continue
 
         expected_answer[field] = expected_value
 
         label_text_base = field.replace("_", " ").title()
         label_state = random.choice(
-            ["full"]
+            # ["full"]
+            ["full"] * 8 + ["omitted"] * 2
             # ["full"] * 5 + ["mixed"] * 3 + ["partial"] * 1 + ["omitted"] * 1
         )
 
@@ -170,15 +173,14 @@ def generate_sample():
 
         if label_state == "full":
             # ocr_chunks.append(fuzz_text(label_text_base))
-            ocr_chunks.append(label_text_base)
-            ocr_chunks.append(fuzzed_value)
+            ocr_chunks.append((label_text_base, fuzzed_value))
 
-    #     elif label_state == "partial":
-    #         ocr_chunks.append(fuzz_text(label_text_base.split()[0]))
-    #         ocr_chunks.append(fuzzed_value)
+        #     elif label_state == "partial":
+        #         ocr_chunks.append(fuzz_text(label_text_base.split()[0]))
+        #         ocr_chunks.append(fuzzed_value)
 
-    #     elif label_state == "omitted":
-    #         ocr_chunks.append(fuzzed_value)
+        elif label_state == "omitted":
+            ocr_chunks.append((label_text_base, fuzzed_value))
 
     #     elif label_state == "mixed":
     #         if random.random() < 0.5:
@@ -186,19 +188,22 @@ def generate_sample():
     #         else:
     #             ocr_chunks.append(fuzz_text(f"{label_text_base.split()[0]}{value}"))
 
-    if random.random() < 0.1:
+    if random.random() < 0.33:
         random.shuffle(ocr_chunks)
 
     logger.debug(f"ocr_chunks: {ocr_chunks}")
-
+    logger.debug(f"expected_answer: {expected_answer}")
     final_ocr_text = ""
     for chunk in ocr_chunks:
-        final_ocr_text += chunk
+        label, value = chunk
+        final_ocr_text += label
         separator = random.choice(
             # ["\n"]
             ["\n"] * 8 + [""] * 4 + [" "] * 4 + ["   "] * 2 + ["\t"] * 2,
         )
         final_ocr_text += separator
+        if value is not None:
+            final_ocr_text += f" {value}"
     logger.debug(f"final_ocr_text:\n{final_ocr_text}")
 
     return {
@@ -209,9 +214,9 @@ def generate_sample():
     }
 
 
-def write_json(data, path):
+def write_json(data, filename, path):
     os.makedirs(path, exist_ok=True)
-    output_path = os.path.join(path, "fake_dataset.json")
+    output_path = os.path.join(path, filename)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     logger.info(f"Dataset gerado e salvo em: {output_path}")
@@ -224,7 +229,7 @@ def main(args: Args):
 
     dataset = [generate_sample() for _ in range(args.num_samples)]
 
-    write_json(dataset, args.save_path)
+    write_json(dataset, args.filename, args.save_path)
 
     logger.info("Geração do dataset falso concluída.")
 
