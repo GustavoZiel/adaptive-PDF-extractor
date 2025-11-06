@@ -17,16 +17,16 @@
 
 ---
 
-> **Resultados Principais**: O processamento de 1.000 documentos alcançou **91.38% de precisão média**, **3.28s de tempo médio de processamento** por documento, e uma redução progressiva de custo através da otimização de cache de regras. Em comparação com a extração base (apenas LLM), esta implementação reduz o tempo de processamento em X% e o custo em Y%, mantendo uma alta precisão.
+🔥 **Resultados Principais**: O processamento de 1.000 documentos alcançou **91.38% de precisão média**, **3.28s de tempo médio de processamento** por documento, e uma redução progressiva de custo através da otimização de cache de regras. Em comparação com a extração base (apenas LLM), esta implementação reduz o tempo de processamento em X% e o custo em Y%, mantendo uma alta precisão.
 
 ## Visão Geral
 
 Este projeto apresenta um **pipeline inteligente de extração de dados** que aprende com o feedback de um LLM para reduzir progressivamente custos e tempo de processamento, mantendo uma alta precisão. Em vez de chamar LLMs caros para cada documento, resumidamente, o sistema:
 
-1.  **Extrai dados estruturados** de PDFs (com OCR) usando uma primeira LLM (*Extractor*) (gpt-5-mini).
-2.  **Gera regras de extração reutilizáveis** usando uma segunda LLM (*Rule Generator*), em padrões regex, a partir de extrações bem-sucedidas.
-3.  **Armazena e valida** essas regras geradas em um loop de feedback adaptativo, ajustando os prompts de geração por um número definido de iterações.
-4.  **Melhora progressivamente** a eficiência ao reutilizar regras validadas em documentos similares.
+1. **Extrai dados estruturados** de PDFs (com OCR) usando uma primeira LLM (*Extractor*) (gpt-5-mini).
+2. **Gera regras de extração reutilizáveis** usando uma segunda LLM (*Rule Generator*), em padrões regex, a partir de extrações bem-sucedidas.
+3. **Armazena e valida** essas regras geradas em um loop de feedback adaptativo, ajustando os prompts de geração por um número definido de iterações.
+4. **Melhora progressivamente** a eficiência ao reutilizar regras validadas em documentos similares.
 
 ### O Pipeline de Aprendizado
 
@@ -69,7 +69,7 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
 
 **A Otimização**: Ao gerar e armazenar regras de extração, cada extração bem-sucedida torna o sistema mais rápido e barato para os próximos documentos **similares**. A cache se adapta usando um LRU (Least Recently Used) ponderado, priorizando regras frequentemente bem-sucedidas.
 
------
+---
 
 ## Experimentos e Resultados
 
@@ -77,7 +77,7 @@ Acesse o seguinte **report** para a visualização completa dos experimentos: **
 
 *Veja a [Documentação de Experimentos](https://www.google.com/search?q=./docs/experiments.md) para a análise detalhada.*
 
------
+---
 
 ## Documentação Extendida
 
@@ -85,10 +85,10 @@ Acesse a documentação completa para entender os detalhes do sistema, em cada u
 
 ### Conceitos Principais
 
-  * **[Arquitetura do Pipeline](https://www.google.com/search?q=./docs/pipeline.md)** - Como o sistema dual-LLM funciona
-  * **[Sistema de Cache Adaptativo](https://www.google.com/search?q=./docs/cache.md)** - Cache LRU com priorização ponderada de regras
-  * **[Geração e Validação de Regras](https://www.google.com/search?q=./docs/rules.md)** - Como as regras são criadas, validadas e refinadas
-  * **[Geração de Dados Sintéticos](https://www.google.com/search?q=./docs/synthetic_data.md)** - Simulando a imprecisão de documentos OCR
+* **[Arquitetura do Pipeline](https://www.google.com/search?q=./docs/pipeline.md)** - Como o sistema dual-LLM funciona
+* **[Sistema de Cache Adaptativo](https://www.google.com/search?q=./docs/cache.md)** - Cache LRU com priorização ponderada de regras
+* **[Geração e Validação de Regras](https://www.google.com/search?q=./docs/rules.md)** - Como as regras são criadas, validadas e refinadas
+* **[Geração de Dados Sintéticos](https://www.google.com/search?q=./docs/synthetic_data.md)** - Simulando a imprecisão de documentos OCR
 
 ## Como Rodar
 
@@ -113,7 +113,7 @@ python src/main.py --help
 
 Para instruções detalhadas de instalação, veja o **[Guia de Instalação](https://www.google.com/search?q=./docs/setup.md)**.
 
------
+---
 
 ## Estrutura do Projeto
 
@@ -134,7 +134,7 @@ enter_ai_fellowship/
 └── Experiments/          # Resultados e métricas de experimentos
 ```
 
------
+---
 
 ## Tecnologias Utilizadas
 
@@ -144,7 +144,7 @@ enter_ai_fellowship/
 * **Tracking**: Weights & Biases + Weave para log de experimentos
 * **Linguagem**: Python 3.11+
 
------
+---
 
 ## Agradecimentos
 
