@@ -17,7 +17,7 @@
 
 ## 🔥 **Resultados Principais**
 
-💡 **Desempenho de Referência (1.000 documentos):**  
+💡 **Desempenho de Referência (1.000 documentos sintéticos):**  
 
 - 🧠 **Precisão média:** `91.38%`  
 - ⚡ **Tempo médio de processamento:** `3.28s`  
@@ -39,12 +39,12 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
 3. **Armazena e valida** essas regras geradas em um loop de feedback adaptativo, ajustando os prompts de geração por um número definido de iterações.
 4. **Melhora progressivamente** a eficiência ao reutilizar regras validadas em documentos similares.
 
-### O Pipeline "from the top"
+### A Pipeline "de cima"
 
 ```text
 ┌─────────────┐
-│   PDF Texto │
-│   (OCR)     │
+│  PDF Texto  │
+│   (OCR)     │
 └──────┬──────┘
        │
        ▼
@@ -61,8 +61,8 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
        │
        ▼
 ┌─────────────────────┐
-│  Rule Generator     │  ◀── Gera regras regex
-│  LLM (gpt-5-mini)   │        com validação
+│  LLM Rule Generator │  ◀── Gera regras regex
+│  (gpt-5-mini)       │        com validação
 └──────┬──────────────┘
        │
        ▼
