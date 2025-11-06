@@ -39,7 +39,7 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
 3. **Armazena e valida** essas regras geradas em um loop de feedback adaptativo, ajustando os prompts de geração por um número definido de iterações.
 4. **Melhora progressivamente** a eficiência ao reutilizar regras validadas em documentos similares.
 
-### O Pipeline de Aprendizado
+### O Pipeline "from the top"
 
 ```text
 ┌─────────────┐
@@ -82,13 +82,11 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
 
 ## Experimentos e Resultados
 
-Acesse o seguinte **report** para a visualização completa dos experimentos: **[Relatório do Weights & Biases](https://wandb.ai/your_username/your_project)** 📈
+Acesse o **[Relatório do Weights & Biases](https://wandb.ai/your_username/your_project)** para a visualização completa dos experimentos.
 
-*Veja a [Documentação de Experimentos](https://www.google.com/search?q=./docs/experiments.md) para a análise detalhada.*
+Veja a [Documentação de Experimentos](https://www.google.com/search?q=./docs/experiments.md) para a análise detalhada.
 
 ## Documentação Extendida
-
-Acesse a documentação completa para entender os detalhes do sistema, em cada um dos seguintes tópicos:
 
 ### Conceitos Principais
 
@@ -117,8 +115,6 @@ python src/main.py \
 # Veja todas as opções de configuração
 python src/main.py --help
 ```
-
-Para instruções detalhadas de instalação, veja o **[Guia de Instalação](https://www.google.com/search?q=./docs/setup.md)**.
 
 ## Estrutura do Projeto
 
