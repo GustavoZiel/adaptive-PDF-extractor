@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, DirectoryPath, Field
 
 import wandb
-from cache_new import Cache
+from cache import Cache
 from data import create_pydantic_model, format_dict, process_dataset, read_dataset
 from llm import (
     EXTRACTION_PROMPT,
@@ -31,7 +31,7 @@ from metrics import (
     setup_wandb,
 )
 from pipeline import extract_with_cache, extract_with_llm, generate_rules_for_fields
-from rule_new import Rule
+from rule import Rule
 
 load_dotenv()
 

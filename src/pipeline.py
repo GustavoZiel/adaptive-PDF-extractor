@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from data import normalize_text
 from logger import get_logger
-from rule_new import generate_robust_rule
+from rule import generate_robust_rule
 
 logger = get_logger(__name__)
 

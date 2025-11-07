@@ -20,7 +20,7 @@ import pickle
 from collections import defaultdict
 
 from logger import get_logger
-from rule_new import Rule
+from rule import Rule
 
 logger = get_logger(__name__)
 
