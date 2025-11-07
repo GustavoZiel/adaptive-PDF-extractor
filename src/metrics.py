@@ -71,6 +71,10 @@ class MetricsTracker:
     total_rules_in_local_cache: int = 0
 
     # LLM call tracking
+    llm1_extractor_calls_per_doc: int = 0
+    llm2_generator_calls_per_doc: int = 0
+    total_per_doc: int = 0
+    total_llm_calls: int = 0
     llm1_extractor_calls: int = 0
     llm2_generator_calls: int = 0
 
@@ -140,8 +144,14 @@ class MetricsTracker:
         self.total_rules_in_global_cache = total_rules_in_global_cache
 
         # LLM call tracking
-        self.llm1_extractor_calls = llm1_calls
-        self.llm2_generator_calls = llm2_calls
+        self.llm1_extractor_calls_per_doc = llm1_calls
+        self.llm2_generator_calls_per_doc = llm2_calls
+        self.total_per_doc = (
+            self.llm1_extractor_calls_per_doc + self.llm2_generator_calls_per_doc
+        )
+        self.llm1_extractor_calls += self.llm1_extractor_calls_per_doc
+        self.llm2_generator_calls += self.llm2_generator_calls_per_doc
+        self.total_llm_calls += self.total_per_doc
 
         # Compute cost for this doc
         self.cost = (prompt_toks * price_in) + (completion_toks * price_out)
@@ -224,9 +234,12 @@ class MetricsTracker:
             "cache/total_rules_in_local_cache": self.total_rules_in_local_cache,
             "cache/total_rules_in_global_cache": self.total_rules_in_global_cache,
             # LLM calls tracking
-            "llm_calls/extractor": self.llm1_extractor_calls,
-            "llm_calls/generator": self.llm2_generator_calls,
-            "llm_calls/total": self.llm1_extractor_calls + self.llm2_generator_calls,
+            "llm_calls/extractor_total": self.llm1_extractor_calls,
+            "llm_calls/generator_total": self.llm2_generator_calls,
+            "llm_calls/total": self.total_llm_calls,
+            "llm_calls/extractor_per_doc": self.llm1_extractor_calls_per_doc,
+            "llm_calls/generator_per_doc": self.llm2_generator_calls_per_doc,
+            "llm_calls/total_per_doc": self.total_per_doc,
         }
 
         return data

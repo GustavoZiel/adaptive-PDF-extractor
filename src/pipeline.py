@@ -96,6 +96,10 @@ def extract_with_llm(
         - success_flag: True if extraction succeeded, False if it failed
     """
     # Invoke LLM agent with extraction prompt
+
+    prompt_toks = 0
+    completion_toks = 0
+
     try:
         response = agent.invoke(
             {
@@ -110,6 +114,19 @@ def extract_with_llm(
                 ]
             }
         )
+        # Track token usage from this attempt
+        ai_message = response["messages"][-1]
+        if hasattr(ai_message, "response_metadata") and ai_message.response_metadata:
+            if (
+                "token_usage" in ai_message.response_metadata
+                and ai_message.response_metadata["token_usage"]
+            ):
+                prompt_toks += ai_message.response_metadata["token_usage"].get(
+                    "prompt_tokens", 0
+                )
+                completion_toks += ai_message.response_metadata["token_usage"].get(
+                    "completion_tokens", 0
+                )
 
         # Extract and normalize response
         raw_response = response["structured_response"].model_dump()
@@ -121,7 +138,7 @@ def extract_with_llm(
             list(normalized_response.keys()),
         )
 
-        return normalized_response, True
+        return normalized_response, True, prompt_toks, completion_toks
 
     except Exception as e:
         logger.error("LLM extraction failed: %s", e)
