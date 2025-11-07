@@ -179,7 +179,6 @@ def generate_sample():
         #     elif label_state == "partial":
         #         ocr_chunks.append(fuzz_text(label_text_base.split()[0]))
         #         ocr_chunks.append(fuzzed_value)
-
         # elif label_state == "mixed":
         #     if random.random() < 0.5:
         #         ocr_chunks.append(fuzz_text(f"{label_text_base.split()[0]} {value}"))
@@ -205,7 +204,6 @@ def generate_sample():
         final_ocr_text += separator
 
         if value is not None:
-            # final_ocr_text += f" {value}"
             final_ocr_text += value
 
     logger.debug("final_ocr_text")

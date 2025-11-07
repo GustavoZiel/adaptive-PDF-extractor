@@ -4,7 +4,7 @@
   <img alt="Adaptive Extractor Logo" src="docs/assets/logo.svg" width="25%" height="25%">
 </picture>
 
-**An adaptive PDF information extraction framework powered by LLM feedback optimization.**
+**An PDF information extraction tool powered by LLM feedback optimization via caching.**
 
 <h3>
 
@@ -14,6 +14,8 @@
 [![Python Version](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 
 </div>
+
+# TODO - Melhorar, deixar mais direto e curto, apenas as porcentagens, redirecionar para o relatório completo com todos os detalhes.
 
 ## 🔥 **Resultados Principais**
 
@@ -98,22 +100,42 @@ Veja a [Documentação de Experimentos](https://www.google.com/search?q=./docs/e
 ## Como Rodar
 
 ```bash
-# Instale as dependências (requer Python 3.10+)
-pip install -e .
+# Clone esse repositório e entre no seu diretório
+git clone https://github.com/GustavoZiel/adaptive-PDF-extractor.git
+cd adaptive-PDF-extractor
 
-# Configure seu ambiente
+# Instale as dependências
+uv sync
+
+# Ative o ambiente virtual
+source .venv/bin/activate
+
+# Crie um arquivo .env na raiz do projeto (Seguindo exemplo em .env.example)
 cp .env.example .env
-# Edite .env com suas chaves de API (OpenAI, WandB opcional)
+
+# Configure a API key do OpenAI no .env
+echo 'OPENAI_API_KEY="sua_api_key_aqui"' >> .env
+
+# Veja todas as opções de configuração da pipeline
+uv run src/main.py --help
+
+# Veja todas as opções de configuração para geração de dados sintéticos
+python3 -m scripts.generate_fake_data --help
+
+# Gere dados sintéticos de exemplo (1.000 documentos)
+python3 -m scripts.generate_fake_data \
+  --save-path data/fake \
+  --dataset-filename dataset.json \
+  --num-samples 1000 \
+  --seed 1
 
 # Rode o pipeline nos dados de exemplo
-python src/main.py \
-  --data-folder data/processed \
+uv run src/main.py \
+  --data-folder data/fake \
   --dataset-filename dataset.json \
+  --cache-filename cache.json \
   --max-attempts 5 \
   --use-wandb
-
-# Veja todas as opções de configuração
-python src/main.py --help
 ```
 
 ## Estrutura do Projeto
