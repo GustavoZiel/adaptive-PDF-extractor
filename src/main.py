@@ -5,7 +5,6 @@ It orchestrates the entire extraction workflow using modular components.
 """
 
 import logging
-import os
 import time
 from collections import defaultdict
 
@@ -14,7 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, DirectoryPath, Field
 
 import wandb
-from cache import Cache
+from cache import Cache, load_dict_cache_json, save_dict_cache
 from data import create_pydantic_model, format_dict, process_dataset, read_dataset
 from llm import (
     EXTRACTION_PROMPT,
@@ -70,10 +69,6 @@ class Args(BaseModel):
         None,
         description="Name of the cache file within the data folder (optional).",
     )
-    log_level: str = Field(
-        default="INFO",
-        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).",
-    )
     use_wandb: bool = Field(
         default=False,
         description="Enable Weights & Biases (wandb) logging for experiment tracking.",
@@ -102,42 +97,22 @@ class Args(BaseModel):
         default=True,
         description="Upload cache to wandb as run file at the end.",
     )
-
-
-# ============================================================================
-# Helper Functions
-# ============================================================================
-
-
-def read_cache_file(cache_filename: str, data_folder: str) -> Cache | None:
-    """Load cache from disk if it exists.
-
-    Args:
-        cache_filename: Name of the cache file
-        data_folder: Folder containing the cache file
-
-    Returns:
-        Loaded Cache object or None if file doesn't exist or loading fails
-    """
-    cache_path = os.path.join(data_folder, cache_filename)
-
-    if not os.path.exists(cache_path):
-        logger.warning("Cache file not found: %s, skipping load.", cache_path)
-        return None
-
-    try:
-        loaded_cache = Cache.load_from_file_json(cache_path)
-        if loaded_cache:
-            logger.info("Loaded cache from %s", cache_path)
-            return loaded_cache
-        else:
-            logger.warning(
-                "Failed to load cache from %s (possibly empty or invalid)", cache_path
-            )
-            return None
-    except Exception as e:
-        logger.error("Error loading cache from %s: %s", cache_path, str(e))
-        return None
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).",
+    )
+    max_retries: int = Field(
+        default=0,
+        ge=0,
+        le=10,
+        description="Maximum number of retries for LLM API calls.",
+    )
+    timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Timeout for each LLM API calls in seconds.",
+    )
 
 
 # ============================================================================
@@ -163,7 +138,7 @@ def main(args: Args):
     logger.debug("Configuration: %s", config)
 
     # Initialize LLM model
-    model = init_model()
+    model = init_model(max_retries=config.max_retries, timeout=config.timeout)
     logger.info("LLM model initialized successfully")
 
     # Load and process dataset
@@ -176,7 +151,9 @@ def main(args: Args):
 
     # Load global cache if provided
     if config.cache_filename:
-        global_loaded_cache = read_cache_file(config.cache_filename, config.data_folder)
+        global_loaded_cache = load_dict_cache_json(
+            config.cache_filename, config.data_folder
+        )
     else:
         global_loaded_cache = None
 
@@ -207,7 +184,7 @@ def main(args: Args):
 
         # Use loaded cache for this label (only on first encounter)
         if global_loaded_cache and data["label"] not in dict_caches:
-            dict_caches[data["label"]] = global_loaded_cache
+            dict_caches[data["label"]] = global_loaded_cache[data["label"]]
             logger.debug("Using loaded cache for label '%s'", data["label"])
 
         label_cache = dict_caches[data["label"]]
@@ -252,7 +229,7 @@ def main(args: Args):
             agent = create_extraction_agent(model, pydantic_model)
 
             # Extract with LLM
-            llm_extracted = extract_with_llm(
+            llm_extracted, extraction_success = extract_with_llm(
                 agent,
                 text_data,
                 data["extraction_schema"],
@@ -262,42 +239,57 @@ def main(args: Args):
             ans.update(llm_extracted)
             llm1_calls = 1
 
-            logger.info("LLM extraction complete:\n%s", format_dict(llm_extracted))
+            if extraction_success:
+                logger.info("LLM extraction complete:\n%s", format_dict(llm_extracted))
 
-            # ================================================================
-            # STEP 3: Generate and Cache Rules
-            # ================================================================
+                # ================================================================
+                # STEP 3: Generate and Cache Rules
+                # ================================================================
 
-            logger.info("Generating rules for %d extracted fields", len(llm_extracted))
-
-            # Create rule generation agent
-            agent_rule = create_rule_agent(model, Rule)
-
-            # Define save callback
-            def save_cache_callback():
-                if config.cache_filename and config.save_cache_disk:
-                    save_cache(label_cache, config.cache_filename, config.data_folder)
-
-            # Generate rules with validation loop
-            new_rules_added, rule_prompt_toks, rule_completion_toks, llm_calls = (
-                generate_rules_for_fields(
-                    agent_rule,
-                    llm_extracted,
-                    text_data,
-                    data["extraction_schema"],
-                    all_fields,
-                    label_cache,
-                    data["label"],
-                    config.max_attempts,
-                    save_cache_callback,
+                logger.info(
+                    "Generating rules for %d extracted fields", len(llm_extracted)
                 )
-            )
 
-            doc_prompt_tokens += rule_prompt_toks
-            doc_completion_tokens += rule_completion_toks
-            llm2_calls = llm_calls
+                # Create rule generation agent
+                agent_rule = create_rule_agent(model, Rule)
 
-            logger.info("Generated %d new rules", new_rules_added)
+                # Define save callback (saves cache immediately to disk after each rule)
+                def save_cache_callback():
+                    if config.save_cache_disk:
+                        save_dict_cache(dict_caches, config)
+
+                # Generate rules with validation loop
+                new_rules_added, rule_prompt_toks, rule_completion_toks, llm_calls = (
+                    generate_rules_for_fields(
+                        agent_rule,
+                        llm_extracted,
+                        text_data,
+                        data["extraction_schema"],
+                        all_fields,
+                        label_cache,
+                        data["label"],
+                        config.max_attempts,
+                        save_cache_callback,
+                    )
+                )
+
+                doc_prompt_tokens += rule_prompt_toks
+                doc_completion_tokens += rule_completion_toks
+                llm2_calls = llm_calls
+
+                logger.info("Generated %d new rules", new_rules_added)
+            else:
+                logger.warning(
+                    "LLM extraction failed (timeout or error). "
+                    "Skipping rule generation for %d fields: %s",
+                    len(failed_fields),
+                    failed_fields,
+                )
+        else:
+            logger.info("All fields extracted from cache (100%% hit rate)")
+            if config.cache_filename and config.save_cache_disk:
+                save_dict_cache(dict_caches, config)
+                logger.debug("Cache saved after successful full extraction")
 
         # ====================================================================
         # STEP 4: Evaluate Performance and Track Metrics
@@ -373,13 +365,8 @@ def main(args: Args):
     # Save final results
     save_results(all_answers, config)
 
-    # Save final cache if WandB enabled
-    if config.save_cache_wandb and config.use_wandb and config.cache_filename:
-        # Save all caches (one per label)
-        for label, cache in dict_caches.items():
-            cache_filename = f"{config.cache_filename}_{label}.json"
-            save_cache(cache, cache_filename, config.data_folder)
-            logger.info("Saved cache for label '%s' to %s", label, cache_filename)
+    # Save final cache
+    save_cache(dict_caches, config)
 
     # Finish WandB run
     if config.use_wandb:
