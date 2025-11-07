@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import json
 import os
-import pickle
 from collections import defaultdict
 
+from data import get_json_filename
 from logger import get_logger
 from rule import Rule
 
@@ -222,16 +222,16 @@ class RulesList:
 
             # Check if extraction was successful and valid
             if cache_item.validate(extracted_text):
-                # logger.debug(
-                #     "Rule matched - Type: %s, Current weight: %d",
-                #     cache_item.rule.type,
-                #     cache_item.weight,
-                # )
+                logger.debug(
+                    "Rule matched - Type: %s, Current weight: %d",
+                    cache_item.rule.type,
+                    cache_item.weight,
+                )
                 old_weight = cache_item.weight
                 cache_item.increment()
-                # logger.debug(
-                #     "✓ Incremented rule weight: %d → %d", old_weight, cache_item.weight
-                # )
+                logger.debug(
+                    "✓ Incremented rule weight: %d → %d", old_weight, cache_item.weight
+                )
 
                 # Bubble up in priority list
                 self.update(node)
@@ -362,41 +362,28 @@ class Cache:
     # Serialization Methods
     # ========================================================================
 
-    def save_to_file_json(self, filename: str, filepath: str):
-        """Save cache to a JSON file.
+    def to_dict(self) -> dict:
+        """Convert entire cache to dictionary for serialization.
 
-        Args:
-            filename: Name of the output file
-            filepath: Directory path to save to
+        Returns:
+            Dictionary mapping field names to list of rule dicts
         """
         data = {
             field: rules_list.get_data() for field, rules_list in self.fields.items()
         }
-
-        # Ensure directory exists
-        output_dir = os.path.dirname(os.path.join(filepath, filename))
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-
-        output_path = os.path.join(filepath, filename)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-
-        logger.info("Cache saved to JSON: %s", output_path)
+        return data
 
     @classmethod
-    def load_from_file_json(cls, filepath: str) -> "Cache":
-        """Load cache from JSON file.
+    def load_from_dict(cls, label: str, data: dict) -> "Cache":
+        """Load cache from dictionary data.
 
         Args:
-            filepath: Path to the JSON file to load
+            label: Label/name for the cache (for logging)
+            data: Dictionary mapping field names to list of rule dicts
 
         Returns:
             Cache instance populated with loaded rules
         """
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
         instance = cls()
         for field, items in data.items():
             rules_list = RulesList()
@@ -407,62 +394,177 @@ class Cache:
             instance.fields[field] = rules_list
 
         logger.info(
-            "Cache loaded from JSON: %s (%d fields)",
-            filepath,
+            "Cache loaded for label '%s' from dict (%d fields)",
+            label,
             len(instance.fields),
         )
         return instance
 
-    def save_to_file_pickle(self, filename: str, filepath: str):
-        """Save cache to a pickle file.
+    # @classmethod
+    # def load_from_file_json(cls, filepath: str) -> "Cache":
+    #     """Load cache from JSON file.
 
-        Args:
-            filename: Name of the output file
-            filepath: Directory path to save to
-        """
-        data = {
-            field: rules_list.get_data() for field, rules_list in self.fields.items()
-        }
+    #     Args:
+    #         filepath: Path to the JSON file to load
 
-        # Ensure directory exists
-        output_dir = os.path.dirname(os.path.join(filepath, filename))
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
+    #     Returns:
+    #         Cache instance populated with loaded rules
+    #     """
+    #     with open(filepath, "r", encoding="utf-8") as f:
+    #         data = json.load(f)
 
-        output_path = os.path.join(filepath, filename)
-        with open(output_path, "wb") as f:
-            pickle.dump(data, f)
+    #     instance = cls()
+    #     for field, items in data.items():
+    #         rules_list = RulesList()
+    #         for item in items:
+    #             # Deserialize Rule object from dict
+    #             rule_obj = Rule.model_validate(item["rule"])
+    #             rules_list.add_rule(rule=rule_obj, weight=item["weight"])
+    #         instance.fields[field] = rules_list
 
-        logger.info("Cache saved to pickle: %s", output_path)
+    #     logger.info(
+    #         "Cache loaded from JSON: %s (%d fields)",
+    #         filepath,
+    #         len(instance.fields),
+    #     )
+    #     return instance
 
-    @classmethod
-    def load_from_file_pickle(cls, filepath: str) -> "Cache":
-        """Load cache from pickle file.
+    # def save_to_file_json(self, filename: str, filepath: str):
+    #     """Save cache to a JSON file.
 
-        Args:
-            filepath: Path to the pickle file to load
+    #     Args:
+    #         filename: Name of the output file
+    #         filepath: Directory path to save to
+    #     """
+    #     data = self.to_dict()
 
-        Returns:
-            Cache instance populated with loaded rules
-        """
-        with open(filepath, "rb") as f:
-            data = pickle.load(f)
+    #     # Ensure directory exists
+    #     output_dir = os.path.dirname(os.path.join(filepath, filename))
+    #     if output_dir:
+    #         os.makedirs(output_dir, exist_ok=True)
 
-        instance = cls()
-        for field, items in data.items():
-            rules_list = RulesList()
-            for item in items:
-                # Deserialize Rule object from dict
-                rule_obj = Rule.model_validate(item["rule"])
-                rules_list.add_rule(rule=rule_obj, weight=item["weight"])
-            instance.fields[field] = rules_list
+    #     output_path = os.path.join(filepath, filename)
+    #     with open(output_path, "w", encoding="utf-8") as f:
+    #         json.dump(data, f, ensure_ascii=False, indent=2)
 
-        logger.info(
-            "Cache loaded from pickle: %s (%d fields)",
-            filepath,
-            len(instance.fields),
-        )
-        return instance
+    #     logger.info("Cache saved to JSON: %s", output_path)
+
+    # def save_to_file_pickle(self, filename: str, filepath: str):
+    #     """Save cache to a pickle file.
+
+    #     Args:
+    #         filename: Name of the output file
+    #         filepath: Directory path to save to
+    #     """
+    #     data = self.to_dict()
+
+    #     # Ensure directory exists
+    #     output_dir = os.path.dirname(os.path.join(filepath, filename))
+    #     if output_dir:
+    #         os.makedirs(output_dir, exist_ok=True)
+
+    #     output_path = os.path.join(filepath, filename)
+    #     with open(output_path, "wb") as f:
+    #         pickle.dump(data, f)
+
+    #     logger.info("Cache saved to pickle: %s", output_path)
+
+    # @classmethod
+    # def load_from_file_pickle(cls, filepath: str) -> "Cache":
+    #     """Load cache from pickle file.
+
+    #     Args:
+    #         filepath: Path to the pickle file to load
+
+    #     Returns:
+    #         Cache instance populated with loaded rules
+    #     """
+    #     with open(filepath, "rb") as f:
+    #         data = pickle.load(f)
+
+    #     instance = cls()
+    #     for field, items in data.items():
+    #         rules_list = RulesList()
+    #         for item in items:
+    #             # Deserialize Rule object from dict
+    #             rule_obj = Rule.model_validate(item["rule"])
+    #             rules_list.add_rule(rule=rule_obj, weight=item["weight"])
+    #         instance.fields[field] = rules_list
+
+    #     logger.info(
+    #         "Cache loaded from pickle: %s (%d fields)",
+    #         filepath,
+    #         len(instance.fields),
+    #     )
+    #     return instance
 
     def __repr__(self):
         return f"Cache(fields={list(self.fields.keys())})"
+
+
+def load_dict_cache_json(
+    cache_filename: str, data_folder: str
+) -> dict[str, Cache] | None:
+    """Read multiple caches from a JSON file.
+
+    Args:
+        cache_filename: Name of the cache file
+        data_folder: Folder containing the cache file
+
+    Returns:
+        Dictionary mapping labels to Cache instances
+    """
+    cache_filename = get_json_filename(cache_filename)
+    cache_path = os.path.join(data_folder, cache_filename)
+
+    if not os.path.exists(cache_path):
+        logger.warning("Cache file not found: %s, skipping load.", cache_path)
+        return None
+
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        loaded_caches = {
+            label: Cache.load_from_dict(label, cache_data)
+            for label, cache_data in data.items()
+        }
+    except Exception as e:
+        logger.error("Error loading cache from %s: %s", cache_path, str(e))
+        return None
+
+    logger.info("Loaded caches from %s: %d labels", cache_path, len(loaded_caches))
+    return loaded_caches
+
+
+def save_dict_cache(dict_caches: dict[str, Cache], config: dict):
+    """Save multiple caches to JSON files.
+
+    Args:
+        dict_caches: Dictionary mapping labels to Cache instances
+        config: Configuration object with save parameters
+    """
+    if not dict_caches:
+        logger.warning("No caches to save, skipping.")
+        return
+
+    if not config.cache_filename:
+        cache_filename = config.dataset_filename + "_cache.json"
+    else:
+        cache_filename = get_json_filename(config.cache_filename)
+
+    cache_path = os.path.join(config.data_folder, cache_filename)
+
+    # Ensure directory exists
+    output_dir = os.path.dirname(cache_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    # Convert all caches to dicts for serialization
+    data_to_save = {label: cache.to_dict() for label, cache in dict_caches.items()}
+
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+        logger.info("Saved caches to %s", cache_path)
+    except Exception as e:
+        logger.error("Error saving caches to %s: %s", cache_path, str(e))

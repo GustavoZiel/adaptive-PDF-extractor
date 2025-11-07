@@ -77,7 +77,7 @@ def extract_with_llm(
     extraction_schema: dict,
     failed_fields: List[str],
     extraction_prompt: str,
-) -> Dict[str, str]:
+) -> Tuple[Dict[str, str], bool]:
     """Extract failed fields using LLM agent.
 
     This is the "slow path" - using LLM to extract fields that
@@ -91,34 +91,41 @@ def extract_with_llm(
         extraction_prompt: Prompt template for extraction
 
     Returns:
-        Dictionary mapping field names to extracted values (normalized)
+        Tuple of (extracted_values, success_flag):
+        - extracted_values: Dictionary mapping field names to extracted values (normalized)
+        - success_flag: True if extraction succeeded, False if it failed
     """
     # Invoke LLM agent with extraction prompt
-    response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": extraction_prompt.format(
-                        text=text_data,
-                        schema=extraction_schema,
-                    ),
-                }
-            ]
-        }
-    )
+    try:
+        response = agent.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": extraction_prompt.format(
+                            text=text_data,
+                            schema=extraction_schema,
+                        ),
+                    }
+                ]
+            }
+        )
 
-    # Extract and normalize response
-    raw_response = response["structured_response"].model_dump()
-    normalized_response = {k: normalize_text(v) for k, v in raw_response.items()}
+        # Extract and normalize response
+        raw_response = response["structured_response"].model_dump()
+        normalized_response = {k: normalize_text(v) for k, v in raw_response.items()}
 
-    logger.debug(
-        "LLM extraction completed for %d fields: %s",
-        len(failed_fields),
-        list(normalized_response.keys()),
-    )
+        logger.debug(
+            "LLM extraction completed for %d fields: %s",
+            len(failed_fields),
+            list(normalized_response.keys()),
+        )
 
-    return normalized_response
+        return normalized_response, True
+
+    except Exception as e:
+        logger.error("LLM extraction failed: %s", e)
+        return {field: None for field in failed_fields}, False
 
 
 # ============================================================================

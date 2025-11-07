@@ -128,15 +128,15 @@ python3 -m scripts.generate_fake_data --help
 # Gere dados sintéticos de exemplo (1.000 documentos)
 python3 -m scripts.generate_fake_data \
   --save-path data/fake \
-  --dataset-filename dataset.json \
+  --dataset-filename dataset \
   --num-samples 1000 \
   --seed 1
 
 # Rode o pipeline nos dados de exemplo OU expecifique o caminho para seus próprios dados
 uv run src/main.py \
   --data-folder data/fake \
-  --dataset-filename dataset.json \
-  --cache-filename cache.json \
+  --dataset-filename dataset \
+  --cache-filename cache \
   --max-attempts 5 \
   --use-wandb
 ```

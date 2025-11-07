@@ -238,11 +238,15 @@ Generate the extraction rule for the field `"{field_name}"`.
 # ============================================================================
 
 
-def init_model():
+def init_model(max_retries: int = 0, timeout: int = 30):
     """Initialize LLM model based on available API keys.
 
     Checks for OPENAI_API_KEY and GEMINI_API_KEY environment variables
     and initializes the appropriate model.
+
+    Args:
+        max_retries: Maximum number of retries for API calls.
+        timeout: Timeout for API calls in seconds.
 
     Returns:
         Initialized chat model instance.
@@ -256,17 +260,18 @@ def init_model():
             "gpt-5-mini",
             model_provider="openai",
             api_key=os.getenv("OPENAI_API_KEY"),
-            max_retries=0,
-            timeout=30,
+            max_retries=max_retries,
+            timeout=timeout,
         )
     elif os.getenv("GEMINI_API_KEY"):
         logger.debug("Initializing Gemini model")
         return init_chat_model(
-            "gemini-2.5-flash-lite",
+            # "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
             model_provider="google_genai",
             api_key=os.getenv("GEMINI_API_KEY"),
-            max_retries=0,
-            timeout=30,
+            max_retries=max_retries,
+            timeout=timeout,
         )
     else:
         raise ValueError(

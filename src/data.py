@@ -25,6 +25,17 @@ logger = get_logger(name=__name__)
 # ============================================================================
 
 
+def get_json_filename(name: str) -> str:
+    """Ensure the filename ends with .json extension.
+
+    Args:
+        name: Input filename
+    Returns:
+        Filename with .json extension
+    """
+    return name if name.endswith(".json") else name + ".json"
+
+
 def format_dict(d: dict) -> str:
     """Format a dictionary as a pretty-printed JSON string.
 
@@ -136,7 +147,7 @@ def process_dataset(dataset, data_folder):
         elif "pdf_path" in data:
             pdf_path = os.path.join(data_folder, data["pdf_path"])
             try:
-                pdf_text = get_pdf_text(pdf_path)
+                pdf_text = normalize_text(get_pdf_text(pdf_path))
                 data.update({"pdf_text": pdf_text})
             except Exception as e:
                 logger.exception("failed to process %s: %s", pdf_path, e)
@@ -206,7 +217,7 @@ def get_pdf_text(file_path):
     assert page_count > 0, "PDF has no pages"
     assert page_count == 1, "PDF has more than one page"
 
-    text = normalize_text(reader.pages[0].extract_text())
+    text = reader.pages[0].extract_text()
     return text
 
 

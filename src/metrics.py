@@ -12,7 +12,8 @@ from typing import List
 import weave
 
 import wandb
-from data import format_dict
+from cache import save_dict_cache
+from data import format_dict, get_json_filename
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -393,23 +394,45 @@ def save_results(all_answers: list, config):
             logger.error("Failed to upload results to wandb: %s", e)
 
 
-def save_cache(cache, cache_filename: str, data_folder: str):
-    """Save cache to disk.
+def save_cache(dict_caches: dict, config):
+    """Save all caches to a JSON file.
 
     Args:
-        cache: Cache instance to save
-        cache_filename: Name of cache file
-        data_folder: Folder to save cache in
+        dict_caches: Dictionary mapping labels to Cache instances
+        config: Config instance with save settings
     """
-    if not cache_filename:
-        logger.debug("No cache filename provided, skipping save")
+    if not dict_caches:
+        logger.warning("No caches to save.")
         return
 
-    cache_filename = (
-        cache_filename if cache_filename.endswith(".json") else cache_filename + ".json"
-    )
-    try:
-        cache.save_to_file_json(cache_filename, data_folder)
-        logger.debug("Cache saved to %s", os.path.join(data_folder, cache_filename))
-    except Exception as e:
-        logger.error("Failed to save cache: %s", e)
+    if config.save_cache_disk:
+        save_dict_cache(dict_caches, config)
+        # filename = get_json_filename(config.cache_filename)
+        # filepath = os.path.join(config.data_folder, filename)
+        # os.makedirs(config.data_folder, exist_ok=True)
+
+        # data_to_save = {label: cache.to_dict() for label, cache in dict_caches.items()}
+
+        # try:
+        #     with open(filepath, "w", encoding="utf-8") as f:
+        #         json.dump(data_to_save, f, ensure_ascii=False, indent=4)
+
+        #     logger.info("Caches saved to disk: %s", filepath)
+        # except Exception as e:
+        #     logger.error("Failed to save caches to disk: %s", e)
+
+    if config.save_cache_wandb and config.use_wandb:
+        filename = get_json_filename(config.cache_filename)
+        filepath = os.path.join(config.data_folder, filename)
+        os.makedirs(config.data_folder, exist_ok=True)
+
+        data_to_save = {label: cache.to_dict() for label, cache in dict_caches.items()}
+
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(data_to_save, f, ensure_ascii=False, indent=4)
+
+            wandb.save(filepath)
+            logger.info("Caches uploaded to wandb: %s", filepath)
+        except Exception as e:
+            logger.error("Failed to upload caches to wandb: %s", e)
