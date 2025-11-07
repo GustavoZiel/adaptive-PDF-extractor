@@ -173,7 +173,6 @@ enter_ai_fellowship/
 ## Tecnologias Utilizadas
 
 - **LLM**: OpenAI gpt-5-mini (configurável)
-- **Framework**: LangChain para orquestração
 - **Validação**: Pydantic para saídas estruturadas
 - **Tracking**: Weights & Biases + Weave para log de experimentos
 - **Linguagem**: Python 3.11+
