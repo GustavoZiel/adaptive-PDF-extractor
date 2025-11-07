@@ -116,6 +116,9 @@ cp .env.example .env
 # Configure a API key do OpenAI no .env
 echo 'OPENAI_API_KEY="sua_api_key_aqui"' >> .env
 
+# Configure a API key do Weights & Biases no .env (opcional, para tracking de experimentos)
+echo 'WANDB_API_KEY="sua_api_key_aqui"' >> .env
+
 # Veja todas as opções de configuração da pipeline
 uv run src/main.py --help
 
@@ -129,7 +132,7 @@ python3 -m scripts.generate_fake_data \
   --num-samples 1000 \
   --seed 1
 
-# Rode o pipeline nos dados de exemplo
+# Rode o pipeline nos dados de exemplo OU expecifique o caminho para seus próprios dados
 uv run src/main.py \
   --data-folder data/fake \
   --dataset-filename dataset.json \
@@ -143,18 +146,28 @@ uv run src/main.py \
 ```text
 enter_ai_fellowship/
 ├── src/
-│   ├── main.py           # Orquestração principal do pipeline
-│   ├── cache.py          # Implementação do cache adaptativo
-│   ├── rule.py           # Geração e execução de regras
-│   ├── models.py         # Inicialização dos LLMs e prompts
-│   └── utils.py          # Utilitários de processamento de dados
+│   ├── main_new.py       # Orquestração principal do pipeline
+│   ├── cache_new.py      # Sistema de cache LRU adaptativo
+│   ├── rule_new.py       # Geração e execução de regras
+│   ├── pipeline.py       # Funções de extração (cache/LLM/rules)
+│   ├── llm.py            # Inicialização dos LLMs e prompts
+│   ├── data.py           # Processamento de dados e PDFs
+│   ├── metrics.py        # Tracking de métricas e WandB
+│   └── logger.py         # Sistema de logging
+├── scripts/
+│   └── generate_fake_data.py  # Geração de dados sintéticos
 ├── data/
-│   ├── dataset.json      # Documentos de entrada
-│   ├── processed/        # Resultados processados
-│   └── cache/            # Regras de extração em cache
-├── docs/                 # Documentação detalhada
-├── notebooks/            # Jupyter notebooks para análise
-└── Experiments/          # Resultados e métricas de experimentos
+│   ├── fake/             # Datasets sintéticos gerados
+│   ├── real/             # Documentos reais (se houver)
+│   └── cache/            # Regras de extração em cache
+├── docs/
+│   ├── PIPELINE_ARCHITECTURE.md    # Arquitetura do pipeline
+│   ├── CACHE_SYSTEM.md             # Sistema de cache adaptativo
+│   ├── RULES_SYSTEM.md             # Geração e validação de regras
+│   └── FAKE_DATA_GENERATION.md     # Geração de dados sintéticos
+├── notebooks/            # Jupyter notebooks para análise
+├── Experiments/          # Resultados e métricas de experimentos
+└── wandb/               # Logs do Weights & Biases
 ```
 
 ## Tecnologias Utilizadas

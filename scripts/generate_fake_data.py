@@ -47,7 +47,7 @@ class Args(BaseModel):
     num_samples: int = Field(
         ..., description="Number of samples to generate for the dataset."
     )
-    filename: str | None = Field(
+    dataset_filename: str | None = Field(
         None,
         description="Filename for the generated dataset. If None, generates name based on num_samples and seed.",
     )
@@ -333,13 +333,19 @@ def main(args: Args):
     dataset = [generate_sample() for _ in range(args.num_samples)]
 
     # Determine output filename
-    if not args.filename:
-        filename = f"fake_dataset_{args.num_samples}samples_seed_{args.seed}.json"
+    if not args.dataset_filename:
+        dataset_filename = (
+            f"fake_dataset_{args.num_samples}samples_seed_{args.seed}.json"
+        )
     else:
-        filename = args.filename
+        dataset_filename = (
+            args.dataset_filename
+            if args.dataset_filename.endswith(".json")
+            else args.dataset_filename + ".json"
+        )
 
     # Save to disk
-    write_json(dataset, filename, args.save_path)
+    write_json(dataset, dataset_filename, args.save_path)
 
     logger.info("✅ Fake dataset generation complete!")
     logger.info("Generated %d samples with seed %d", args.num_samples, args.seed)
