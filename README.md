@@ -84,18 +84,27 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
 
 ## Experimentos e Resultados
 
+~~Acesse o Relatório do Weights & Biases~~ — *to come*
+
+~~Veja a Documentação de Experimentos~~ — *to come*
+<!-- 
 Acesse o **[Relatório do Weights & Biases](https://wandb.ai/your_username/your_project)** para a visualização completa dos experimentos.
 
-Veja a [Documentação de Experimentos](https://www.google.com/search?q=./docs/experiments.md) para a análise detalhada.
+Veja a [Documentação de Experimentos](https://www.google.com/search?q=./docs/experiments.md) para a análise detalhada. -->
 
 ## Documentação Extendida
 
 ### Conceitos Principais
 
-- **[Arquitetura do Pipeline](https://www.google.com/search?q=./docs/pipeline.md)** - Como o sistema dual-LLM funciona
+* ~~Arquitetura do Pipeline~~ — *to come*
+* ~~Sistema de Cache Adaptativo~~ — *to come*
+* ~~Geração e Validação de Regras~~ — *to come*
+* ~~Geração de Dados Sintéticos~~ — *to come*
+
+<!-- - **[Arquitetura do Pipeline](https://www.google.com/search?q=./docs/pipeline.md)** - Como o sistema dual-LLM funciona
 - **[Sistema de Cache Adaptativo](https://www.google.com/search?q=./docs/cache.md)** - Cache LRU com priorização ponderada de regras
 - **[Geração e Validação de Regras](https://www.google.com/search?q=./docs/rules.md)** - Como as regras são criadas, validadas e refinadas
-- **[Geração de Dados Sintéticos](https://www.google.com/search?q=./docs/synthetic_data.md)** - Simulando a imprecisão de documentos OCR
+- **[Geração de Dados Sintéticos](https://www.google.com/search?q=./docs/synthetic_data.md)** - Simulando a imprecisão de documentos OCR -->
 
 ## Como Rodar
 
@@ -172,13 +181,13 @@ enter_ai_fellowship/
 
 ## Tecnologias Utilizadas
 
-- **LLM**: OpenAI gpt-5-mini (configurável)
-- **Validação**: Pydantic para saídas estruturadas
-- **Tracking**: Weights & Biases + Weave para log de experimentos
-- **Linguagem**: Python 3.11+
+* **LLM**: OpenAI gpt-5-mini (configurável)
+* **Validação**: Pydantic para saídas estruturadas
+* **Tracking**: Weights & Biases + Weave para log de experimentos
+* **Linguagem**: Python 3.11+
 
-## Agradecimentos
+<!-- ## Agradecimentos
 
 Agradeço a oportunidade de realizar esse projeto, me diverti bastante e aprendi muito também! 🚀
 
-> Gustavo
+> Gustavo -->
