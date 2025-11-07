@@ -8,21 +8,21 @@ from typing import List
 
 import tyro
 import weave
+from cache import Cache
 from dotenv import load_dotenv
 from langchain.agents import create_agent
+from models import extract_prompt_en, init_model
 from pydantic import BaseModel, DirectoryPath, Field
+from rule import Rule, generate_robust_rule
 
 import wandb
-from cache import Cache
-from logger import get_logger, set_global_log_level
-from models import extract_prompt_en, init_model
-from rule import Rule, generate_robust_rule
-from utils import (
+from data import (
     create_pydantic_model,
     normalize_text,
     process_dataset,
     read_dataset,
 )
+from logger import get_logger, set_global_log_level
 
 load_dotenv()
 

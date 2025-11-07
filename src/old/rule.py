@@ -577,6 +577,7 @@ def generate_robust_rule(
     """
     total_prompt_tokens = 0
     total_completion_tokens = 0
+    llm_calls = 0
 
     extra = (
         {
@@ -640,9 +641,12 @@ Now, generate a **new and corrected** rule below:
             },
         )
         try:
+            logger.info("Invoking agent for rule generation")
             response = agent_rule.invoke(
                 {"messages": [{"role": "user", "content": current_prompt}]}
             )
+            logger.info("Agent invocation successful")
+            llm_calls += 1
         except Exception as e:
             logger.debug(
                 f"Error invoking agent for rule generation on attempt {current_attempt} for field '{field_name}': {e}",
@@ -709,9 +713,11 @@ Now, generate a **new and corrected** rule below:
             },
         )
         logger.info(
-            f"Rule generation successful for field '{field_name}' after {current_attempt} attempts: {extra}",
+            f"Rule generation successful for field '{field_name}' after {current_attempt} attempts",
         )
-        return rule, total_prompt_tokens, total_completion_tokens
+        logger.debug(f"Extra info: {extra}")
+
+        return rule, total_prompt_tokens, total_completion_tokens, llm_calls
 
     # 9. Failure (after max_attempts)
     extra = (
@@ -725,4 +731,4 @@ Now, generate a **new and corrected** rule below:
         f"Failed to generate a valid rule for field '{field_name}' after {max_attempts} attempts: {extra}",
     )
     print(f"ALERT: Failed to generate a valid rule for field '{field_name}'.")
-    return None, total_prompt_tokens, total_completion_tokens
+    return None, total_prompt_tokens, total_completion_tokens, llm_calls

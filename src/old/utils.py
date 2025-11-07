@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from typing import Any, Dict
@@ -9,6 +10,18 @@ from PyPDF2 import PdfReader
 from logger import get_logger
 
 logger = get_logger(name=__name__)
+
+
+def format_dict(d: dict) -> str:
+    """Format a dictionary as a pretty-printed JSON string.
+
+    Args:
+        d: Dictionary to format
+    Returns:
+        Pretty-printed JSON string
+    """
+    dict_formatted = json.dumps(d, ensure_ascii=False, indent=2)
+    return dict_formatted
 
 
 def normalize_text(text: str) -> str:
