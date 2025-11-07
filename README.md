@@ -8,14 +8,14 @@
 
 <h3>
 
-[Documentation](docs/) • [Experiments](examples/) • [Report](reports/)
+<!-- [Documentation](docs/) • [Experiments](examples/) • [Report](reports/) -->
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 
 </div>
 
-# TODO - Melhorar, deixar mais direto e curto, apenas as porcentagens, redirecionar para o relatório completo com todos os detalhes.
+<!-- # TODO - Melhorar, deixar mais direto e curto, apenas as porcentagens, redirecionar para o relatório completo com todos os detalhes.
 
 ## 🔥 **Resultados Principais**
 
@@ -30,7 +30,7 @@
 - Esta implementação supera a extração base (**LLM puro**) com:  
   - ➡️ **–X%** de tempo de processamento  
   - ➡️ **–Y%** de custo total  
-  - sem comprometer a **alta precisão**.
+  - sem comprometer a **alta precisão**. -->
 
 ## Visão Geral
 
