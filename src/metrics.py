@@ -435,8 +435,12 @@ def save_cache(dict_caches: dict, config):
         #     logger.error("Failed to save caches to disk: %s", e)
 
     if config.save_cache_wandb and config.use_wandb:
-        filename = get_json_filename(config.cache_filename)
-        filepath = os.path.join(config.data_folder, filename)
+        if not config.cache_filename:
+            cache_filename = config.dataset_filename + "_cache.json"
+        else:
+            cache_filename = get_json_filename(config.cache_filename)
+
+        filepath = os.path.join(config.data_folder, cache_filename)
         os.makedirs(config.data_folder, exist_ok=True)
 
         data_to_save = {label: cache.to_dict() for label, cache in dict_caches.items()}

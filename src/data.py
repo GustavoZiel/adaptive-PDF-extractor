@@ -9,7 +9,8 @@ This module handles all data-related operations including:
 
 import os
 import re
-from typing import Any, Dict
+import unicodedata
+from typing import Any, Dict, List, Tuple
 
 import json5
 from pydantic import BaseModel, Field, create_model
@@ -48,11 +49,86 @@ def format_dict(d: dict) -> str:
     return dict_formatted
 
 
+def _normalize_text(
+    s: str, *, return_mapping: bool = False
+) -> str | Tuple[str, List[int]]:
+    """Normalize text and optionally return mapping back to original indices."""
+    normalized_chars: List[str] = []
+    index_map: List[int] = []
+
+    for idx, char in enumerate(s):
+        lower_char = char.lower()
+        decomposed = unicodedata.normalize("NFD", lower_char)
+        base_chars = [c for c in decomposed if unicodedata.category(c) != "Mn"]
+
+        if not base_chars:
+            continue
+
+        for base_char in base_chars:
+            if base_char == "_" or base_char.isspace():
+                if normalized_chars and normalized_chars[-1] == " ":
+                    continue
+                normalized_chars.append(" ")
+                if return_mapping:
+                    index_map.append(idx)
+            elif base_char.isalnum():
+                normalized_chars.append(base_char)
+                if return_mapping:
+                    index_map.append(idx)
+            else:
+                # Skip punctuation characters
+                continue
+
+    # Trim leading/trailing spaces introduced during normalization
+    while normalized_chars and normalized_chars[0] == " ":
+        normalized_chars.pop(0)
+        if return_mapping and index_map:
+            index_map.pop(0)
+
+    while normalized_chars and normalized_chars[-1] == " ":
+        normalized_chars.pop()
+        if return_mapping and index_map:
+            index_map.pop()
+
+    normalized_str = "".join(normalized_chars)
+
+    if return_mapping:
+        return normalized_str, index_map
+    return normalized_str
+
+
+def match_text(s: str) -> str:
+    """Normalize text for matching.
+
+    Lowercases, strips accents, collapses spaces, and removes punctuation.
+    """
+    return _normalize_text(s)  # type: ignore[return-value]
+
+
+def find_match_text(text: str, keyword: str) -> int:
+    """Return the index of keyword in text using accent-insensitive matching."""
+    norm_text, index_map = _normalize_text(text, return_mapping=True)
+    norm_keyword = match_text(keyword)
+
+    if not norm_text or not norm_keyword:
+        return -1
+
+    pattern = r"\b" + re.escape(norm_keyword) + r"\b"
+    match = re.search(pattern, norm_text)
+
+    if not match:
+        return -1
+
+    # Map normalized start position back to the original text index
+    return index_map[match.start()]
+
+
 def normalize_text(text: str) -> str:
-    """Comprehensive text normalization combining structure and whitespace normalization.
+    """Comprehensive text normalization for structure and whitespace.
 
     This function:
-    1. Splits conjoined letters and numbers (e.g., "Seccional101943" -> "Seccional 101943")
+    1. Splits conjoined letters and numbers (e.g., "Seccional101943"
+       -> "Seccional 101943")
     2. Splits conjoined words (e.g., "GOKUInscrição" -> "GOKU Inscrição")
     3. Collapses multiple spaces/tabs into one
     4. Collapses multiple newlines into one
@@ -156,7 +232,8 @@ def process_dataset(dataset, data_folder):
         # Create Pydantic model from extraction schema
         if "extraction_schema" not in data:
             logger.warning(
-                "missing extraction_schema for item %d, skipping pydantic model creation",
+                "missing extraction_schema for item %d, skipping "
+                "pydantic model creation",
                 i,
             )
             continue
