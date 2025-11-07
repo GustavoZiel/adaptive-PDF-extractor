@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
+from data import find_match_text
 from logger import get_logger
 
 logger = get_logger(name=__name__)
@@ -147,13 +148,15 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
     - Returns "__NULL__" when field is genuinely null (empty between keywords)
     - Returns None when rule doesn't match (has value or stop_keyword not found)
     """
+    logger.debug("Executing keyword rule: %s", rule)
+
     if not rule.keyword:
         return None
 
     # Find the keyword
-    keyword_pos = text.find(rule.keyword)
+    keyword_pos = find_match_text(text, rule.keyword)
     if keyword_pos == -1:
-        logger.info(
+        logger.warning(
             "Keyword rule: keyword '%s' not found in text. Impossible to extract value. Returning None.",
             rule.keyword,
         )
@@ -162,6 +165,16 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
     # Get all text *after* the keyword
     start_pos = keyword_pos + len(rule.keyword)
     text_after = text[start_pos:]
+
+    logger.debug(
+        "Keyword rule: Found keyword '%s' at position %d. Extracting text after keyword.",
+        rule.keyword,
+        keyword_pos,
+    )
+
+    logger.debug(
+        "Keyword rule: Text after keyword '%s': '%s'", rule.keyword, text_after
+    )
 
     # --- Apply Strategy ---
 
@@ -178,7 +191,8 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
             return text_after.strip()  # No stop, return all text after
 
         # Find the stop_keyword *in the text after the keyword*
-        stop_pos = text_after.find(rule.stop_keyword)
+        stop_pos = find_match_text(text_after, rule.stop_keyword)
+        # stop_pos = text_after.find(rule.stop_keyword)
 
         if stop_pos != -1:
             # Return everything between keyword and stop_keyword
@@ -194,12 +208,13 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
 
         if rule.stop_keyword:
             # If we have a stop_keyword, check the region between keywords
-            stop_pos = text_after.find(rule.stop_keyword)
+            stop_pos = find_match_text(text_after, rule.stop_keyword)
+            # stop_pos = text_after.find(rule.stop_keyword)
 
             if stop_pos == -1:
                 # Stop keyword not found - this rule doesn't match
                 # (the next field's keyword should always be present)
-                logger.warning(
+                logger.debug(
                     "conditional_null FAILED: stop_keyword '%s' not found in text after keyword '%s'. ",
                     rule.stop_keyword,
                     rule.keyword,
@@ -221,10 +236,20 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
                 "conditional_null: no stop_keyword specified, checking to end of text"
             )
 
-        # Check if there's only whitespace in the region
-        if not between_text.strip():
+        logger.debug(
+            "conditional_null: between_text='%s'",
+            between_text,
+        )
+
+        # Check if region contains any word characters (letters, digits, underscore)
+        cleaned = between_text.strip()
+        if not cleaned or not re.search(r"\w", cleaned):
             # Success! The field is genuinely null (empty)
-            if rule.stop_keyword and text_after.find(rule.stop_keyword) != -1:
+            if (
+                rule.stop_keyword
+                and find_match_text(text_after, rule.stop_keyword) != -1
+            ):
+                # if rule.stop_keyword and text_after.find(rule.stop_keyword) != -1:
                 logger.debug(
                     "conditional_null: Field is NULL - only whitespace between '%s' and '%s'",
                     rule.keyword,
