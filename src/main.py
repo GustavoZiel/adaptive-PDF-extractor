@@ -108,10 +108,14 @@ class Args(BaseModel):
         description="Maximum number of retries for LLM API calls.",
     )
     timeout: int = Field(
-        default=30,
+        default=90,
         ge=5,
         le=120,
         description="Timeout for each LLM API calls in seconds.",
+    )
+    use_cache: bool = Field(
+        default=True,
+        description="Enable cache-based extraction. Disable for LLM-only mode.",
     )
 
 
@@ -149,13 +153,15 @@ def main(args: Args):
     # Initialize cache system (one cache per document label/type)
     dict_caches = defaultdict(Cache)
 
-    # Load global cache if provided
-    if config.cache_filename:
+    # Load global cache if provided and cache is enabled
+    if config.use_cache and config.cache_filename:
         global_loaded_cache = load_dict_cache_json(
             config.cache_filename, config.data_folder
         )
     else:
         global_loaded_cache = None
+        if not config.use_cache:
+            logger.info("Cache disabled - operating in LLM-only mode")
 
     # Initialize metrics tracking
     metrics_tracker = None
@@ -193,20 +199,30 @@ def main(args: Args):
         # STEP 1: Cache-Based Extraction (Fast Path)
         # ====================================================================
 
-        ans, success_fields, failed_fields = extract_with_cache(
-            label_cache, data["label"], text_data, all_fields
-        )
+        ans = {}
+        success_fields = []
+        failed_fields = []
 
-        logger.info(
-            "Extraction summary - Success: %d/%d, Failed: %d/%d",
-            len(success_fields),
-            len(all_fields),
-            len(failed_fields),
-            len(all_fields),
-        )
-        logger.debug("Successful fields: %s", success_fields)
-        logger.warning("Failed fields: %s", failed_fields)
-        logger.debug("Extracted values: %s", ans)
+        if config.use_cache:
+            # Try cache-based extraction first
+            ans, success_fields, failed_fields = extract_with_cache(
+                label_cache, data["label"], text_data, all_fields
+            )
+
+            logger.info(
+                "Extraction summary - Success: %d/%d, Failed: %d/%d",
+                len(success_fields),
+                len(all_fields),
+                len(failed_fields),
+                len(all_fields),
+            )
+            logger.debug("Successful fields: %s", success_fields)
+            logger.warning("Failed fields: %s", failed_fields)
+            logger.debug("Extracted values: %s", ans)
+        else:
+            # Cache disabled - all fields need LLM extraction
+            logger.info("Cache disabled - using LLM-only extraction mode")
+            failed_fields = all_fields.copy()
 
         # ====================================================================
         # STEP 2: LLM Extraction for Failed Fields (Slow Path)
@@ -229,7 +245,12 @@ def main(args: Args):
             agent = create_extraction_agent(model, pydantic_model)
 
             # Extract with LLM
-            llm_extracted, extraction_success = extract_with_llm(
+            (
+                llm_extracted,
+                extraction_success,
+                extractor_prompt_toks,
+                extractor_completion_toks,
+            ) = extract_with_llm(
                 agent,
                 text_data,
                 data["extraction_schema"],
@@ -237,30 +258,38 @@ def main(args: Args):
                 EXTRACTION_PROMPT,
             )
             ans.update(llm_extracted)
+            doc_prompt_tokens += extractor_prompt_toks
+            doc_completion_tokens += extractor_completion_toks
             llm1_calls = 1
 
             if extraction_success:
                 logger.info("LLM extraction complete:\n%s", format_dict(llm_extracted))
 
                 # ================================================================
-                # STEP 3: Generate and Cache Rules
+                # STEP 3: Generate and Cache Rules (only if cache is enabled)
                 # ================================================================
 
-                logger.info(
-                    "Generating rules for %d extracted fields", len(llm_extracted)
-                )
+                if config.use_cache:
+                    logger.info(
+                        "Generating rules for %d extracted fields", len(llm_extracted)
+                    )
 
-                # Create rule generation agent
-                agent_rule = create_rule_agent(model, Rule)
+                    # Create rule generation agent
+                    agent_rule = create_rule_agent(model, Rule)
 
-                # Define save callback (saves cache immediately to disk after each rule)
-                def save_cache_callback():
-                    if config.save_cache_disk:
-                        save_dict_cache(dict_caches, config)
+                    # Define save callback
+                    # (saves cache immediately to disk after each rule)
+                    def save_cache_callback():
+                        if config.save_cache_disk:
+                            save_dict_cache(dict_caches, config)
 
-                # Generate rules with validation loop
-                new_rules_added, rule_prompt_toks, rule_completion_toks, llm_calls = (
-                    generate_rules_for_fields(
+                    # Generate rules with validation loop
+                    (
+                        new_rules_added,
+                        rule_prompt_toks,
+                        rule_completion_toks,
+                        llm_calls,
+                    ) = generate_rules_for_fields(
                         agent_rule,
                         llm_extracted,
                         text_data,
@@ -271,13 +300,14 @@ def main(args: Args):
                         config.max_attempts,
                         save_cache_callback,
                     )
-                )
 
-                doc_prompt_tokens += rule_prompt_toks
-                doc_completion_tokens += rule_completion_toks
-                llm2_calls = llm_calls
+                    doc_prompt_tokens += rule_prompt_toks
+                    doc_completion_tokens += rule_completion_toks
+                    llm2_calls = llm_calls
 
-                logger.info("Generated %d new rules", new_rules_added)
+                    logger.info("Generated %d new rules", new_rules_added)
+                else:
+                    logger.debug("Cache disabled - skipping rule generation")
             else:
                 logger.warning(
                     "LLM extraction failed (timeout or error). "
@@ -365,8 +395,9 @@ def main(args: Args):
     # Save final results
     save_results(all_answers, config)
 
-    # Save final cache
-    save_cache(dict_caches, config)
+    # Save final cache (only if cache is enabled)
+    if config.use_cache:
+        save_cache(dict_caches, config)
 
     # Finish WandB run
     if config.use_wandb:
