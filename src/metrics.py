@@ -381,21 +381,21 @@ def save_results(all_answers: list, config):
         all_answers: List of answer dictionaries with idx, expected, extracted
         config: Config instance with save settings
     """
-    if config.save_ans_disk:
-        filename = config.dataset_filename + "_result.json"
-        filepath = os.path.join(config.data_folder, filename)
-        os.makedirs(config.data_folder, exist_ok=True)
+    if config.use_cache:
+        filename = config.dataset_filename + "_with_cache" + "_result.json"
+    else:
+        filename = config.dataset_filename + "_without_cache" + "_result.json"
 
+    filepath = os.path.join(config.data_folder, filename)
+    os.makedirs(config.data_folder, exist_ok=True)
+
+    if config.save_ans_disk:
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(all_answers, f, ensure_ascii=False, indent=4)
 
         logger.info("Results saved to disk: %s", filepath)
 
     if config.save_ans_wandb and config.use_wandb:
-        filename = config.dataset_filename + "_result.json"
-        filepath = os.path.join(config.data_folder, filename)
-        os.makedirs(config.data_folder, exist_ok=True)
-
         # Save to disk first (WandB uploads from disk)
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(all_answers, f, ensure_ascii=False, indent=4)

@@ -142,7 +142,7 @@ def extract_with_llm(
 
     except Exception as e:
         logger.error("LLM extraction failed: %s", e)
-        return {field: None for field in failed_fields}, False
+        return {field: None for field in failed_fields}, False, 0, 0
 
 
 # ============================================================================

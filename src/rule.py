@@ -153,7 +153,11 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
     # Find the keyword
     keyword_pos = text.find(rule.keyword)
     if keyword_pos == -1:
-        return None  # Keyword not found
+        logger.info(
+            "Keyword rule: keyword '%s' not found in text. Impossible to extract value. Returning None.",
+            rule.keyword,
+        )
+        return "__NULL__"
 
     # Get all text *after* the keyword
     start_pos = keyword_pos + len(rule.keyword)
@@ -195,9 +199,10 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
             if stop_pos == -1:
                 # Stop keyword not found - this rule doesn't match
                 # (the next field's keyword should always be present)
-                logger.debug(
-                    "conditional_null: stop_keyword '%s' not found, rule doesn't match",
+                logger.warning(
+                    "conditional_null FAILED: stop_keyword '%s' not found in text after keyword '%s'. ",
                     rule.stop_keyword,
+                    rule.keyword,
                 )
                 return None
 
@@ -234,9 +239,11 @@ def _execute_keyword_rule(rule: Rule, text: str) -> Optional[str]:
         else:
             # Failure - there's actual content in the region
             # This means the field has a value, so this null-detection rule doesn't match
-            logger.debug(
-                "conditional_null: Field has value (not null) - found content: '%s'",
-                between_text.strip()[:50],  # Log first 50 chars
+            logger.warning(
+                "conditional_null FAILED: Field has value (not null). "
+                "Keyword: '%s', Stop: '%s'",
+                rule.keyword,
+                rule.stop_keyword,
             )
             return None
 
@@ -481,13 +488,14 @@ def _validate_extraction_rule(
                 )
                 return None  # Success
             else:
-                # Expected null but got something else
                 feedback = (
-                    f"- ATTEMPT {attempt} FAILED: Expected NULL field.\n"
-                    f"  - Extracted: `{extracted_val}`\n"
-                    f"  - Expected: NULL (no value)\n"
-                    f"  - Your rule should use 'conditional_null' strategy "
-                    f"to correctly detect null fields."
+                    f"- ATTEMPT {attempt} FAILED\n"
+                    f"  - This means your 'conditional_null' rule didn't match.\n"
+                    f"  - Possible reasons:\n"
+                    f"    1. The 'keyword' ('{rule.keyword}') was not found in the text\n"
+                    f"    2. The 'stop_keyword' ('{rule.stop_keyword}') was not found after the keyword\n"
+                    f"    3. There is actual content between the keywords (field is not null)\n"
+                    f"  - Rule details: keyword='{rule.keyword}', stop_keyword='{rule.stop_keyword}'"
                 )
                 logger.warning(
                     "Extraction rule failed for field '%s' (attempt %d) - expected null, got '%s'",

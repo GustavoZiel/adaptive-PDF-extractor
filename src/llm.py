@@ -68,78 +68,92 @@ The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Ender
 ---
 **SYSTEM-LEVEL ROBUSTNESS REQUIREMENTS**
 
-1. **Stable Anchors Only:** Rules must rely on stable textual anchors (labels or keywords), **never visual layout, indentation, or order**.
-2. **Cross-Field Independence:** Each rule must work independently, even if other fields are missing or reordered.
-3. **Invariant to spacing, capitalization, and accents:** Regex should be case-insensitive (`(?i)`) and tolerant to minor spacing or punctuation variations.
-4. **Anchor Proximity:** Capture text **within 1–2 lines of the anchor**, not from distant parts of the document.
-5. **No Document-Specific Values:** Avoid hardcoding specific values from the current document.
+1.  **Stable Anchors Only:** Rules must rely on stable textual anchors (labels or keywords), **never visual layout, indentation, or order**.
+2.  **Cross-Field Independence:** Each rule must work independently, even if other fields are missing or reordered.
+3.  **Invariant to spacing, capitalization, and accents:** Regex should be case-insensitive (`(?i)`) and tolerant to minor spacing or punctuation variations.
+4.  **Anchor Proximity:** Capture text **within 1–2 lines of the anchor**, not from distant parts of the document.
+5.  **No Document-Specific Values:** Avoid hardcoding specific values from the current document.
 
 ---
 **CRUCIAL CONSTRAINTS: WHAT TO AVOID**
 
-1. **Coupled Rules**
-   * Bad: "Find the text on the line after the 'inscricao' field."
-   * Good: "Find the text immediately after the keyword 'Subseção'."
+1.  **Coupled Rules**
+    * Bad: "Find the text on the line after the 'inscricao' field."
+    * Good: "Find the text immediately after the keyword 'Subseção'."
 
-2. **Keyword vs. Value Confusion**
-   * Extraction Rule must capture the **value**, not the anchor.
-   * Bad: `(Situação)` → matches anchor, not value.
-   * Good: `Situação\s+([^\n]+)` → captures the actual value.
+2.  **Keyword vs. Value Confusion**
+    * Extraction Rule must capture the **value**, not the anchor.
+    * Bad: `(Situação)` → matches anchor, not value.
+    * Good: `Situação\s+([^\n]+)` → captures the actual value.
 
-3. **Permissive Validation**
-   * `validation_regex` must be specific and fail on contamination from other fields.
-   * Bad: `^[A-Z\s]+$` → would match unrelated field text.
-   * Good: `^(?!.*(?i:{{other_keywords_joined}}))[A-ZÀ-ÖØ-öø-ÿ''\-\s]{{2,120}}$`
+3.  **Permissive Validation**
+    * `validation_regex` must be specific and fail on contamination from other fields.
+    * Bad: `^[A-Z\s]+$` → would match unrelated field text.
+    * Good: `^(?!.*(?i:{{other_keywords_joined}}))[A-ZÀ-ÖØ-öø-ÿ''\-\s]{{2,120}}$`
 
 ---
 **RULE GENERATION STEPS:**
 
-1. Analyze nearby text to find the **most reliable anchor** for the field.
-2. Determine the **typical format** of the expected value (letters, digits, length, accents).
-3. Ensure **cross-field contamination** is prevented using `{other_keywords}`.
-4. Generate the final JSON rule containing:
-   - `rule` (regex capturing only the value)
-   - `validation_regex` (must fail on other field keywords)
+**STEP 0 (MANDATORY): Check if field is NULL**
+-   Look at the `field_value` input below
+-   **IF `field_value` is `null` or `None`:**
+    → You MUST use `"conditional_null"` strategy
+    → Skip to the **`🚨 CRITICAL: How to Configure a "conditional_null" Strategy 🚨`** section below.
+-   **IF `field_value` has a value:**
+    → DO NOT use `"conditional_null"`
+    → Continue to steps 1-4 below
+
+**For Non-NULL fields:**
+1.  Analyze nearby text to find the **most reliable anchor** for the field.
+2.  Determine the **typical format** of the expected value (letters, digits, length, accents).
+3.  Ensure **cross-field contamination** is prevented using `{other_keywords}`.
+4.  Generate the final JSON rule containing:
+    -   `rule` (regex capturing only the value)
+    -   `validation_regex` (must fail on other field keywords)
 
 ---
 **INPUTS**
 
-1. **Full Text (`full_text`):**
+🔍 **FIRST: Check field_value below to determine your strategy!**
+    -   If NULL/None → Use "conditional_null" strategy
+    -   If has value → Use "regex" or "next_line" strategy
+
+1.  **Full Text (`full_text`):**
 {text}
 
-2. **Field to Analyze (`field_name`):**
+2.  **Field to Analyze (`field_name`):**
 "{field_name}"
 
-3. **Extracted Value (`field_value`):**
+3.  **⚠️ Extracted Value (`field_value`):** 👈 CHECK THIS FIRST!
 "{field_value}"
 
-4. **Field Description (`field_description`):**
+4.  **Field Description (`field_description`):**
 "{field_description}"
 
-5. **Other Field Keywords to Exclude (`other_keywords`):**
+5.  **Other Field Keywords to Exclude (`other_keywords`):**
 {other_keywords}
 
 ---
 **OUTPUT INSTRUCTIONS**
 
-- Both `"rule"` and `"validation_regex"` are mandatory.
-- Extraction regex **must include a capture group `( )` for the value**, not the anchor.
+-   Both `"rule"` and `"validation_regex"` are mandatory.
+-   Extraction regex **must include a capture group `( )` for the value**, not the anchor.
 
 **Rule Schema**
 {{
     "type": "regex or keyword",
     "rule": "Python-compatible regex pattern capturing only the value (null if not applicable)",
     "keyword": "Anchor keyword (null if regex is used)",
-    "strategy": "Strategy for keyword usage (e.g., 'next_line', 'multiline_until_stop')",
+    "strategy": "Strategy for keyword usage (e.g., 'next_line', 'multiline_until_stop', 'conditional_null')",
     "stop_keyword": "Next field anchor (null if not applicable)",
     "line_number": "Optional, use only if position is necessary",
     "validation_regex": "Regex to validate the value format, must fail on contamination."
 }}
 
 ---
-**EXAMPLES**
+**EXAMPLES (For Non-NULL fields)**
 
-1. **Regex Rule**
+1.  **Regex Rule**
 * field_name: "inscricao"
 * field_value: "101943"
 * other_keywords: ['nome','seccional','subsecao','categoria','situacao']
@@ -153,7 +167,7 @@ The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Ender
     "validation_regex": "^\d{{6}}$"
 }}
 
-2. **Keyword Rule (with value)**
+2.  **Keyword Rule (with value)**
 * field_name: "subsecao"
 * field_value: "Conselho Seccional - Paraná"
 * other_keywords: ['nome','inscricao','seccional','categoria','situacao']
@@ -167,64 +181,62 @@ The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Ender
     "validation_regex": "^(?!.*(?i:nome|inscricao|seccional|categoria|situacao)).*[A-ZÀ-ÖØ-öø-ÿ''\-\s]+$"
 }}
 
-3. **Conditional Null Rule (field is empty/null)**
-* field_name: "categoria"
-* field_value: null
-* other_keywords: ['nome','inscricao','endereco','situacao']
-{{
-    "type": "keyword",
-    "rule": null,
-    "keyword": "Categoria",
-    "strategy": "conditional_null",
-    "stop_keyword": "Endereco Profissional",
-    "line_number": null,
-    "validation_regex": "^__NULL__$"
-}}
+---
+**🚨 CRITICAL: How to Configure a "conditional_null" Strategy 🚨**
 
-**IMPORTANT: Conditional Null Strategy**
+You are in this section because **STEP 0** determined that `field_value` is `null`.
+The `"conditional_null"` strategy detects when a field is genuinely empty by checking for only whitespace between two anchor keywords.
 
-Use `"conditional_null"` strategy ONLY when the field value is null/empty/missing.
+**Your Task:**
+You must create a rule anchored to the field's **own label**. The executor (the Python code) will check for whitespace between this label and the *next* field's label.
 
-This strategy:
-- Checks if there's only whitespace between `keyword` and `stop_keyword`
-- Returns "__NULL__" if field is genuinely empty
-- Returns None (rule fails) if field has any value
-- **Works for last fields too** (when no field comes after)
-
-Requirements:
-1. `keyword`: The field label/anchor (e.g., "Categoria")
-2. `stop_keyword`: OPTIONAL - Next field name OR null for last field
-3. `validation_regex`: MUST be exactly `"^__NULL__$"` for null fields
-
-**Case 1: Field with next field (stop_keyword specified)**
-Example text for NULL field:
+**Text Example:**
 ```
+
+Nome: João Silva
+Seccional: OAB-SP
 Categoria
-Endereco Profissional Rua ABC
-```
-Between "Categoria" and "Endereco Profissional" there's only whitespace → NULL
 
-**Case 2: Last field in document (stop_keyword can be null or non-existent)**
-Example text for NULL "situacao" (last field):
+Endereco Profissional: Rua ABC
+
 ```
-Telefone Profissional +55 11 1234-5678
+**Analysis:** The label "Categoria" is present, but its value is empty. The *next* field is "Endereco Profissional".
+
+**How to Configure:**
+* `"type"`: `"keyword"`
+* `"strategy"`: `"conditional_null"`
+* `"keyword"`: The field's **own** label (e.g., `"Categoria"`). Find this label in the text.
+* `"stop_keyword"`: The **next** field's label (e.g., `"Endereco Profissional"`).
+* `"validation_regex"`: `"^__NULL__$"`
+* `"rule"`: `null`
+
+**Special Case: Last Field is NULL**
+If the empty field is the *last* one in the document, it's the same logic, but there is no "next" field.
+
+**Text Example:**
+```
+
+...
+Telefone: +55 11 1234-5678
 Situacao
-```
-After "Situacao" there's only whitespace until end → NULL
-Use: `"stop_keyword": null` or specify next field that won't be found
+(end of document)
 
-Example text for NON-NULL field (don't use conditional_null):
 ```
-Categoria
-ADVOGADO
-Endereco Profissional Rua ABC
-```
-Between keywords there's "ADVOGADO" → NOT NULL (use different strategy)
-    "strategy": "next_line",
-    "stop_keyword": null,
-    "line_number": null,
-    "validation_regex": "^(?!.*(?i:nome|inscricao|seccional|categoria|situacao)).*[A-ZÀ-ÖØ-öø-ÿ''\-\s]+$"
-}}
+**How to Configure:**
+* `"keyword"`: The field's **own** label (e.g., `"Situacao"`)
+* `"stop_keyword"`: `null` (This tells the system to check for whitespace until the end of the text)
+
+**Summary: `conditional_null` Checklist**
+-   **Always set these:**
+    -   `"type"`: `"keyword"`
+    -   `"strategy"`: `"conditional_null"`
+    -   `"validation_regex"`: `"^__NULL__$"`
+    -   `"rule"`: `null`
+-   **Set these based on the text:**
+    -   `"keyword"`: The field's **own** label (e.g., "Categoria", "Situacao").
+    -   `"stop_keyword"`: The **next** field's label (or `null` if it's the last field).
+
+*(Note: If the field's own label is not in the text, the rule should still be generated with the field's own label.*
 
 ---
 **Your Turn**
