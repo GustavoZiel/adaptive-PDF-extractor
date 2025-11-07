@@ -146,9 +146,9 @@ uv run src/main.py \
 ```text
 enter_ai_fellowship/
 ├── src/
-│   ├── main_new.py       # Orquestração principal do pipeline
-│   ├── cache_new.py      # Sistema de cache LRU adaptativo
-│   ├── rule_new.py       # Geração e execução de regras
+│   ├── main.py       # Orquestração principal do pipeline
+│   ├── cache.py      # Sistema de cache LRU adaptativo
+│   ├── rule.py       # Geração e execução de regras
 │   ├── pipeline.py       # Funções de extração (cache/LLM/rules)
 │   ├── llm.py            # Inicialização dos LLMs e prompts
 │   ├── data.py           # Processamento de dados e PDFs
