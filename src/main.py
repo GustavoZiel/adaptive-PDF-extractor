@@ -204,7 +204,7 @@ def main(args: Args):
         if config.use_cache:
             # Try cache-based extraction first
             ans, success_fields, failed_fields = extract_with_cache(
-                label_cache, data["label"], text_data, all_fields
+                label_cache, text_data, all_fields
             )
 
             logger.info(

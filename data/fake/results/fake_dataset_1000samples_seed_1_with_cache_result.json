@@ -67,8 +67,8 @@
             "subsecao": null,
             "categoria": "ADVOGADA",
             "endereco_profissional": "Favela de Lima, 8, Santa Rosa, 98386-756 Abreu da Prata / PI",
-            "situacao": "Situação Irregular",
-            "telefone_profissional": "0900-957-9032"
+            "telefone_profissional": "0900-957-9032",
+            "situacao": "Situação Irregular"
         }
     },
     {
@@ -87,12 +87,12 @@
         "extracted": {
             "inscricao": "840567315",
             "seccional": "AC",
+            "categoria": "ESTAGIARIO",
             "endereco_profissional": "Campo Lucas Gabriel Castro, 38, Vila Do Pombal, 47577-104 Fernandes das Pedras / SE",
+            "situacao": "Situação Regular",
             "nome": null,
             "subsecao": "Cruz Paulista - Amazonas",
-            "categoria": "ESTAGIARIO",
-            "telefone_profissional": null,
-            "situacao": "Situação Regular"
+            "telefone_profissional": null
         }
     },
     {
@@ -138,7 +138,7 @@
             "seccional": null,
             "subsecao": "Rocha do Galho - Paraná",
             "categoria": null,
-            "endereco_profissional": "Telefone Profissional 61 3101-2228",
+            "endereco_profissional": null,
             "telefone_profissional": "61 3101-2228",
             "situacao": null
         }
@@ -163,8 +163,8 @@
             "subsecao": "Carvalho de Pacheco - Piauí",
             "categoria": null,
             "endereco_profissional": null,
-            "telefone_profissional": "(021) 9817 4104",
-            "situacao": "Situação Irregular"
+            "situacao": "Situação Irregular",
+            "telefone_profissional": "(021) 9817 4104"
         }
     },
     {
@@ -354,7 +354,7 @@
             "seccional": "SC",
             "subsecao": "Sampaio da Serra - Paraíba",
             "categoria": "ADVOGADO",
-            "endereco_profissional": "Seccional SC",
+            "endereco_profissional": null,
             "telefone_profissional": "61 4219 0546",
             "situacao": "Situação Regular"
         }
@@ -474,7 +474,7 @@
             "seccional": null,
             "subsecao": "Cruz - Alagoas",
             "categoria": "SUPLEMENTAR",
-            "endereco_profissional": "Nome Caroline Souza",
+            "endereco_profissional": null,
             "telefone_profissional": null,
             "situacao": "Situação Regular"
         }
@@ -3860,7 +3860,7 @@
             "categoria": "ADVOGADO",
             "endereco_profissional": "Lagoa Liz Siqueira, Xodo-Marize, 24948951 Lima do Galho / PA",
             "telefone_profissional": "(041) 7312-8979",
-            "situacao": "Regular"
+            "situacao": "Situação Regular"
         }
     },
     {
@@ -9450,9 +9450,9 @@
             "seccional": null,
             "subsecao": "Mata - Minas Gerais",
             "categoria": "SUPLEMENTAR",
+            "endereco_profissional": "Vale de Sampaio, 11, Vila Olhos D'água, 61435225 Dias da Serra / RS",
             "telefone_profissional": "+55 (051) 4884-0318",
-            "situacao": "Situação Irregular",
-            "endereco_profissional": "Vale de Sampaio, 11, Vila Olhos D'água, 61435225"
+            "situacao": "Situação Irregular"
         }
     },
     {
@@ -20754,7 +20754,7 @@
             "seccional": "AL",
             "subsecao": null,
             "categoria": "SUPLEMENTAR",
-            "endereco_profissional": "Morro Novaes, 12, Vila Olhos D'água, 08727-885",
+            "endereco_profissional": "Morro Novaes, 12, Vila Olhos D'água, 08727-885 Siqueira / PE",
             "telefone_profissional": "+55 71 9748 0781",
             "situacao": "Situação Irregular"
         }

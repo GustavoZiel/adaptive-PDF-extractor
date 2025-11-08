@@ -8,6 +8,8 @@
 
 <h3>
 
+# TODO UPDATE BADGES AFTER MERGE
+
 <!-- [Documentation](docs/) • [Experiments](examples/) • [Report](reports/) -->
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
@@ -85,26 +87,19 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
 ## Experimentos e Resultados
 
 ~~Acesse o Relatório do Weights & Biases~~ — *to come*
-
-~~Veja a Documentação de Experimentos~~ — *to come*
 <!-- 
-Acesse o **[Relatório do Weights & Biases](https://wandb.ai/your_username/your_project)** para a visualização completa dos experimentos.
+Acesse o **[Relatório do Weights & Biases](https://wandb.ai/your_username/your_project)** para a visualização completa dos experimentos. -->
 
-Veja a [Documentação de Experimentos](https://www.google.com/search?q=./docs/experiments.md) para a análise detalhada. -->
+Veja a **[Documentação de Experimentos](./docs/experiment.md)** para análise detalhada dos experimentos realizados.
 
 ## Documentação Extendida
 
 ### Conceitos Principais
 
-* ~~Arquitetura do Pipeline~~ — *to come*
-* ~~Sistema de Cache Adaptativo~~ — *to come*
-* ~~Geração e Validação de Regras~~ — *to come*
-* ~~Geração de Dados Sintéticos~~ — *to come*
-
-<!-- - **[Arquitetura do Pipeline](https://www.google.com/search?q=./docs/pipeline.md)** - Como o sistema dual-LLM funciona
-- **[Sistema de Cache Adaptativo](https://www.google.com/search?q=./docs/cache.md)** - Cache LRU com priorização ponderada de regras
-- **[Geração e Validação de Regras](https://www.google.com/search?q=./docs/rules.md)** - Como as regras são criadas, validadas e refinadas
-- **[Geração de Dados Sintéticos](https://www.google.com/search?q=./docs/synthetic_data.md)** - Simulando a imprecisão de documentos OCR -->
+* **[Arquitetura do Pipeline](./docs/pipeline.md)** — Pipeline de 3 etapas com fast/slow path e aprendizado de regras
+* **[Sistema de Cache Adaptativo](./docs/cache.md)** — Cache LRU com priorização ponderada de regras
+* **[Geração e Validação de Regras](./docs/rule.md)** — Como as regras são criadas, validadas e refinadas
+* **[Geração de Dados Sintéticos](./docs/fake_data.md)** — Simulando documentos OCR com ruídos e variações
 
 ## Como Rodar
 
@@ -152,30 +147,32 @@ uv run src/main.py \
 
 ## Estrutura do Projeto
 
+# TODO Update after merge
+
 ```text
 enter_ai_fellowship/
 ├── src/
-│   ├── main.py       # Orquestração principal do pipeline
-│   ├── cache.py      # Sistema de cache LRU adaptativo
-│   ├── rule.py       # Geração e execução de regras
-│   ├── pipeline.py       # Funções de extração (cache/LLM/rules)
-│   ├── llm.py            # Inicialização dos LLMs e prompts
-│   ├── data.py           # Processamento de dados e PDFs
-│   ├── metrics.py        # Tracking de métricas e WandB
-│   └── logger.py         # Sistema de logging
+│   ├── main.py          # Orquestração principal do pipeline
+│   ├── cache.py         # Sistema de cache LRU adaptativo
+│   ├── rule.py          # Geração e execução de regras
+│   ├── pipeline.py      # Funções de extração (cache/LLM/rules)
+│   ├── llm.py           # Inicialização dos LLMs e prompts
+│   ├── data.py          # Processamento de dados e PDFs
+│   ├── metrics.py       # Tracking de métricas e WandB
+│   └── logger.py        # Sistema de logging
 ├── scripts/
 │   └── generate_fake_data.py  # Geração de dados sintéticos
 ├── data/
-│   ├── fake/             # Datasets sintéticos gerados
-│   ├── real/             # Documentos reais (se houver)
-│   └── cache/            # Regras de extração em cache
+│   └── fake/            # Datasets sintéticos gerados
 ├── docs/
-│   ├── PIPELINE_ARCHITECTURE.md    # Arquitetura do pipeline
-│   ├── CACHE_SYSTEM.md             # Sistema de cache adaptativo
-│   ├── RULES_SYSTEM.md             # Geração e validação de regras
-│   └── FAKE_DATA_GENERATION.md     # Geração de dados sintéticos
-├── notebooks/            # Jupyter notebooks para análise
-├── Experiments/          # Resultados e métricas de experimentos
+│   ├── pipeline.md      # Arquitetura do pipeline
+│   ├── cache.md         # Sistema de cache adaptativo
+│   ├── rule.md          # Geração e validação de regras
+│   ├── fake_data.md     # Geração de dados sintéticos
+│   ├── experiment.md    # Experimentos realizados
+│   ├── architecture.md  # (em desenvolvimento)
+│   └── assets/          # Imagens e diagramas
+├── ai-fellowship-data/  # Dataset original do desafio
 └── wandb/               # Logs do Weights & Biases
 ```
 
