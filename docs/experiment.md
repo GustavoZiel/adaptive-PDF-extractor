@@ -2,7 +2,7 @@
 
 Seis experimentos foram conduzidos para avaliar a eficácia da pipeline.
 
-~~Acesse todos os resultados no relatório de experimentos do Weights & Biases~~ — *to come*
+Acesse todos os resultados no **[Relatório de Experimentos do Weights & Biases](https://wandb.ai/gustavogrib-ggr-usp/adaptive-pdf-extractor/reports/Adaptative-PDF-Extractor-Analysis--VmlldzoxNDk4MjY0OQ?accessToken=sdl3m4ghmnv8tdnho85ia68qoxi88phpr9xp0pduj0lnjwfwwju1lg9fn38rr5tw)**.
 
 Todos os datasets foram gerados sinteticamente utilizando o script [`generate_fake_data.py`](../scripts/generate_fake_data.py):
 

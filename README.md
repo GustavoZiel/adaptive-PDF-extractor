@@ -8,9 +8,7 @@
 
 <h3>
 
-# TODO UPDATE BADGES AFTER MERGE
-
-<!-- [Documentation](docs/) • [Experiments](examples/) • [Report](reports/) -->
+[Documentation](docs/) • [Experiments](docs/experiment.md) • [Report](https://wandb.ai/gustavogrib-ggr-usp/adaptive-pdf-extractor/reports/Adaptative-PDF-Extractor-Analysis--VmlldzoxNDk4MjY0OQ?accessToken=sdl3m4ghmnv8tdnho85ia68qoxi88phpr9xp0pduj0lnjwfwwju1lg9fn38rr5tw)
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/release/python-3110/)
@@ -86,9 +84,7 @@ Este projeto apresenta um **pipeline inteligente de extração de dados** que ap
 
 ## Experimentos e Resultados
 
-~~Acesse o Relatório do Weights & Biases~~ — *to come*
-<!-- 
-Acesse o **[Relatório do Weights & Biases](https://wandb.ai/your_username/your_project)** para a visualização completa dos experimentos. -->
+Acesse o **[Relatório do Weights & Biases](https://wandb.ai/gustavogrib-ggr-usp/adaptive-pdf-extractor/reports/Adaptative-PDF-Extractor-Analysis--VmlldzoxNDk4MjY0OQ?accessToken=sdl3m4ghmnv8tdnho85ia68qoxi88phpr9xp0pduj0lnjwfwwju1lg9fn38rr5tw)** para a visualização completa dos experimentos.
 
 Veja a **[Documentação de Experimentos](./docs/experiment.md)** para análise detalhada dos experimentos realizados.
 
