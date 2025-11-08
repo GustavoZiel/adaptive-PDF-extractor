@@ -26,13 +26,13 @@ logger = get_logger(__name__)
 
 @dataclass
 class MetricsTracker:
-    """Track metrics across documents (formerly WandbLogProperties).
+    """Track metrics across documents.
 
     This class maintains both cumulative metrics (totals/averages) and
     per-document metrics (reset after each document).
     """
 
-    # 🔹 Persistent (cumulative) metrics
+    # Persistent (cumulative) metrics
     total_docs: int = 0
     total_cost: float = 0.0
     total_prompt_tokens: int = 0
@@ -41,7 +41,7 @@ class MetricsTracker:
     avg_processing_time_sec: float = 0.0
     avg_performance: float = 0.0
     cache_hit_rate: float = 0.0
-    total_rules_in_global_cache: int = 0
+    total_rules_in_global_cache: int = 0  # Across all labels
     total_elapsed: float = 0.0  # Total cumulative time
 
     # Running sums for averages
@@ -49,7 +49,7 @@ class MetricsTracker:
     _sum_performance: float = 0.0
     _sum_cache_hits: int = 0
 
-    # 🔹 Per-document (reset each iteration)
+    # Per-document (reset each iteration)
     doc_index: int = 0
     doc_id: str = ""
     label: str = ""
@@ -63,12 +63,14 @@ class MetricsTracker:
     fields_failed_count: int = 0
     total_fields: int = 0
     performance_per_doc: float = 0.0
-    failed_field_names: List[str] = field(default_factory=list)
+    failed_field_names: List[str] = field(
+        default_factory=list
+    )  # Ensure each instance has its own list
 
     # Cache & Healing metrics
     fast_path_success: int = 0  # 1 if cache extracted 100%, 0 otherwise
     new_rules_added: int = 0
-    total_rules_in_local_cache: int = 0
+    total_rules_in_local_cache: int = 0  # For this label
 
     # LLM call tracking
     llm1_extractor_calls_per_doc: int = 0
@@ -235,11 +237,11 @@ class MetricsTracker:
             "cache/total_rules_in_global_cache": self.total_rules_in_global_cache,
             # LLM calls tracking
             "llm_calls/extractor_total": self.llm1_extractor_calls,
-            "llm_calls/generator_total": self.llm2_generator_calls,
-            "llm_calls/total": self.total_llm_calls,
             "llm_calls/extractor_per_doc": self.llm1_extractor_calls_per_doc,
             "llm_calls/generator_per_doc": self.llm2_generator_calls_per_doc,
+            "llm_calls/generator_total": self.llm2_generator_calls,
             "llm_calls/total_per_doc": self.total_per_doc,
+            "llm_calls/total": self.total_llm_calls,
         }
 
         return data
@@ -307,6 +309,13 @@ def setup_wandb(config):
         logger.warning("WANDB_API_KEY not set in .env file.")
         logger.warning("Proceeding without wandb logging...")
         return None
+
+    if not config.wandb_run_name:
+        config.wandb_run_name = (
+            "run_" + config.dataset_filename + "_with_cache"
+            if config.use_cache
+            else "run_" + config.dataset_filename + "_without_cache"
+        )
 
     # Initialize WandB
     wandb_run = wandb.init(
@@ -408,7 +417,7 @@ def save_results(all_answers: list, config):
 
 
 def save_cache(dict_caches: dict, config):
-    """Save all caches to a JSON file.
+    """Save all caches to a JSON file to disk and WandB.
 
     Args:
         dict_caches: Dictionary mapping labels to Cache instances
@@ -420,19 +429,6 @@ def save_cache(dict_caches: dict, config):
 
     if config.save_cache_disk:
         save_dict_cache(dict_caches, config)
-        # filename = get_json_filename(config.cache_filename)
-        # filepath = os.path.join(config.data_folder, filename)
-        # os.makedirs(config.data_folder, exist_ok=True)
-
-        # data_to_save = {label: cache.to_dict() for label, cache in dict_caches.items()}
-
-        # try:
-        #     with open(filepath, "w", encoding="utf-8") as f:
-        #         json.dump(data_to_save, f, ensure_ascii=False, indent=4)
-
-        #     logger.info("Caches saved to disk: %s", filepath)
-        # except Exception as e:
-        #     logger.error("Failed to save caches to disk: %s", e)
 
     if config.save_cache_wandb and config.use_wandb:
         if not config.cache_filename:

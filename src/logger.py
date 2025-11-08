@@ -1,3 +1,5 @@
+"""Custom logger with colored output and global log level setting."""
+
 import logging
 import re
 import sys
@@ -25,7 +27,7 @@ def set_global_log_level(level):
 
 
 class ColoredFormatter(logging.Formatter):
-    """Custom formatter that adds colors to log messages."""
+    """Custom formatter that adds colors to log messages. (Inspired on Karpathy's nanochat code hehe)"""
 
     # ANSI color codes
     COLORS = {

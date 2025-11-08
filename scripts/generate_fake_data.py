@@ -242,7 +242,8 @@ def generate_sample() -> dict:
         label_text_base = field.replace("_", " ").title()
 
         # 90% with label, 10% without label
-        label_state = random.choice(["full"] * 9 + ["omitted"] * 1)
+        label_state = "full"  # Only "full" labels for now
+        # label_state = random.choice(["full"] * 9 + ["omitted"] * 1)
 
         fuzzed_value = value  # Can apply fuzz_text(value) for noise
 

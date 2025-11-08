@@ -8,7 +8,7 @@ most effective rules.
 Key components:
 - CacheItem: Wraps a Rule with success weight tracking
 - Node: Linked list node for LRU implementation
-- RulesList: Per-field LRU cache with automatic priority reordering
+- RulesList: Per-field LRU cache (Double Linked List) with automatic priority reordering
 - Cache: Top-level container managing RulesList for each field
 """
 
@@ -165,7 +165,7 @@ class RulesList:
 
     Maintains a doubly-linked list of rules ordered by weight (priority).
     When a rule successfully extracts a value, its weight increases and
-    it bubbles up in the list for faster future access.
+    it **bubbles up** in the list for faster future access.
 
     Attributes:
         head: First node in the list (highest priority)
@@ -198,8 +198,8 @@ class RulesList:
             self.curr = node
         self.length += 1
         logger.debug(
-            "Added rule to cache - Type: %s, Weight: %d, Total rules: %d",
-            rule.type,
+            "Added rule to cache - Rule pattern: %s, Weight: %d, Total rules: %d",
+            rule.rule[:50] if len(rule.rule) > 50 else rule.rule,
             weight,
             self.length,
         )
@@ -223,12 +223,16 @@ class RulesList:
             # Check if extraction was successful and valid
             if cache_item.validate(extracted_text):
                 logger.debug(
-                    "Rule matched - Type: %s, Current weight: %d",
-                    cache_item.rule.type,
+                    "Rule matched - Pattern: %s, Current weight: %d",
+                    cache_item.rule.rule[:50]
+                    if len(cache_item.rule.rule) > 50
+                    else cache_item.rule.rule,
                     cache_item.weight,
                 )
+
                 old_weight = cache_item.weight
                 cache_item.increment()
+
                 logger.debug(
                     "✓ Incremented rule weight: %d → %d", old_weight, cache_item.weight
                 )
@@ -399,104 +403,6 @@ class Cache:
             len(instance.fields),
         )
         return instance
-
-    # @classmethod
-    # def load_from_file_json(cls, filepath: str) -> "Cache":
-    #     """Load cache from JSON file.
-
-    #     Args:
-    #         filepath: Path to the JSON file to load
-
-    #     Returns:
-    #         Cache instance populated with loaded rules
-    #     """
-    #     with open(filepath, "r", encoding="utf-8") as f:
-    #         data = json.load(f)
-
-    #     instance = cls()
-    #     for field, items in data.items():
-    #         rules_list = RulesList()
-    #         for item in items:
-    #             # Deserialize Rule object from dict
-    #             rule_obj = Rule.model_validate(item["rule"])
-    #             rules_list.add_rule(rule=rule_obj, weight=item["weight"])
-    #         instance.fields[field] = rules_list
-
-    #     logger.info(
-    #         "Cache loaded from JSON: %s (%d fields)",
-    #         filepath,
-    #         len(instance.fields),
-    #     )
-    #     return instance
-
-    # def save_to_file_json(self, filename: str, filepath: str):
-    #     """Save cache to a JSON file.
-
-    #     Args:
-    #         filename: Name of the output file
-    #         filepath: Directory path to save to
-    #     """
-    #     data = self.to_dict()
-
-    #     # Ensure directory exists
-    #     output_dir = os.path.dirname(os.path.join(filepath, filename))
-    #     if output_dir:
-    #         os.makedirs(output_dir, exist_ok=True)
-
-    #     output_path = os.path.join(filepath, filename)
-    #     with open(output_path, "w", encoding="utf-8") as f:
-    #         json.dump(data, f, ensure_ascii=False, indent=2)
-
-    #     logger.info("Cache saved to JSON: %s", output_path)
-
-    # def save_to_file_pickle(self, filename: str, filepath: str):
-    #     """Save cache to a pickle file.
-
-    #     Args:
-    #         filename: Name of the output file
-    #         filepath: Directory path to save to
-    #     """
-    #     data = self.to_dict()
-
-    #     # Ensure directory exists
-    #     output_dir = os.path.dirname(os.path.join(filepath, filename))
-    #     if output_dir:
-    #         os.makedirs(output_dir, exist_ok=True)
-
-    #     output_path = os.path.join(filepath, filename)
-    #     with open(output_path, "wb") as f:
-    #         pickle.dump(data, f)
-
-    #     logger.info("Cache saved to pickle: %s", output_path)
-
-    # @classmethod
-    # def load_from_file_pickle(cls, filepath: str) -> "Cache":
-    #     """Load cache from pickle file.
-
-    #     Args:
-    #         filepath: Path to the pickle file to load
-
-    #     Returns:
-    #         Cache instance populated with loaded rules
-    #     """
-    #     with open(filepath, "rb") as f:
-    #         data = pickle.load(f)
-
-    #     instance = cls()
-    #     for field, items in data.items():
-    #         rules_list = RulesList()
-    #         for item in items:
-    #             # Deserialize Rule object from dict
-    #             rule_obj = Rule.model_validate(item["rule"])
-    #             rules_list.add_rule(rule=rule_obj, weight=item["weight"])
-    #         instance.fields[field] = rules_list
-
-    #     logger.info(
-    #         "Cache loaded from pickle: %s (%d fields)",
-    #         filepath,
-    #         len(instance.fields),
-    #     )
-    #     return instance
 
     def __repr__(self):
         return f"Cache(fields={list(self.fields.keys())})"

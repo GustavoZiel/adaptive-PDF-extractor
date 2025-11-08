@@ -1,0 +1,321 @@
+{
+    "carteira_oab": {
+        "nome": [
+            {
+                "rule": {
+                    "rule": "(?i)\\bNome\\b[:\\s\\-]*([A-Za-zÀ-ÖØ-öø-ÿ'\\.\\-\\s]{2,120}?)(?=\\s*(?:Inscri(?:c|ç)ao|Seccional|Subsecao|Categoria|Endereco(?:\\s*Profissional)?|Telefone(?:\\s*Profissional)?|Situacao|$))",
+                    "validation_regex": "(?i)^(?!.*(?:inscri(?:c|ç)ao|seccional|subsecao|categoria|endereco(?:\\s*profissional)?|telefone(?:\\s*profissional)?|situacao))[A-Za-zÀ-ÖØ-öø-ÿ'\\.\\-\\s]{2,120}$"
+                },
+                "weight": 1562
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bNome\\b[\\s\\r\\n:,-]*()(?=(?:Inscri[cç][ãa]o|Seccional|Subse[cç][ãa]o|Categoria|Ender[eé]co\\s*Profissional|Telefone\\s*Profissional|Situa[cç][ãa]o|$))",
+                    "validation_regex": "^$"
+                },
+                "weight": 760
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bNome\\b[:\\s\\-]*([A-Za-zÀ-ÖØ-öø-ÿ'’\\.\\-\\s]{2,120}?)(?=\\s*(?:Inscr|Seccional|Subsecao|Subseção|Categoria|Endereco|Endereço|Telefone|Situacao|Situação|\\d{4,}|$))",
+                    "validation_regex": "^(?!.*(?i:inscr|seccional|subsecao|categoria|endereco|telefone|situacao))[A-Za-zÀ-ÖØ-öø-ÿ'’\\-\\.\\s]{2,120}$"
+                },
+                "weight": 6
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Nome\\s*[:\\-–—]*\\s*([A-ZÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ\\.\\'’\\-\\s]{1,120}?)(?=\\s*(?:Telefone Profissional|Telefone|Categoria|Seccional|Inscri(?:ç|c)ão|Inscricao|Subsecao|Subseção|Situacao|Situação|Endere[cç]o|$))",
+                    "validation_regex": "(?i)^(?!.*(?:inscri(?:ç|c)ã?o|inscricao|seccional|subse(?:c|s)ao|subseção|categoria|endere[cç]o|telefone|situacao|situação))[A-Za-zÀ-ÖØ-öø-ÿ\\.\\'’\\-\\s]{2,120}$"
+                },
+                "weight": 2
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bNome\\b[:\\s]*([A-Za-zÀ-ÖØ-öø-ÿ'’\\.\\-]+(?:\\s+[A-Za-zÀ-ÖØ-öø-ÿ'’\\.\\-]+)*)(?=\\s*(?:\\+|\\(|\\d{2,}|\\bSeccional\\b|\\bInscr|\\bSubsec|\\bCategoria\\b|\\bEnder|\\bTelefone\\b|\\bSituac|$))",
+                    "validation_regex": "^[A-Za-zÀ-ÖØ-öø-ÿ'\\.\\-\\s]{2,120}$"
+                },
+                "weight": 1
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Nome(?:\\s+do\\s+profissional)?[\\s:\\-–—]*()",
+                    "validation_regex": "^$"
+                },
+                "weight": 1
+            }
+        ],
+        "inscricao": [
+            {
+                "rule": {
+                    "rule": "(?i)inscri(?:c|ç)(?:a|ã)o[\\s:\\-]*([0-9]{6,12})\\b",
+                    "validation_regex": "^\\d{6,12}$"
+                },
+                "weight": 1686
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\binscri(?:c(?:a|ã)o|ção|cao)\\b[\\s:\\-]*()(?=(?:nome|seccional|subsec(?:ao|ão)|categoria|endereco(?:[_\\s]profissional)?|telefone(?:[_\\s]profissional)?|situac(?:ao|ão)|$))",
+                    "validation_regex": "^$"
+                },
+                "weight": 696
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bNome\\b[\\s:\\-]*([0-9]{6,12})(?=\\s*(?:Seccional|Seccao|Subsecao|Subseção|Categoria|Endereço Profissional|Endereco Profissional|Endereço|Endereco|Telefone Profissional|Telefone|Situação|Situacao|$))",
+                    "validation_regex": "^\\d{6,12}$"
+                },
+                "weight": 12
+            },
+            {
+                "rule": {
+                    "rule": "(?i)(?:Inscri[cç][ãa]o|Nome)\\s*(?:[:\\-]?\\s*)?[^\\d]{0,200}?(\\d{6,10})(?=\\s*(?:Seccional|Subsecao|Subseção|Categoria|Endere[cç]o(?:\\s+Profissional)?|Telefone(?:\\s+Profissional)?|Situacao|Situação|$))",
+                    "validation_regex": "^\\d{6,10}$"
+                },
+                "weight": 6
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bInscri(?:ç|c)(?:ã|a)o\\b[\\s\\n]*()(?=(?:SE\\b|Nome\\b|Seccional\\b|Seccao\\b|Subseção\\b|Subsecao\\b|Categoria\\b|End[eé]reço\\s+Profissional|Endereco\\s+Profissional|Telefone\\s+Profissional|Telefone\\b|Situaç(?:ã|a)o\\b|Situacao\\b|$))",
+                    "validation_regex": "^$"
+                },
+                "weight": 6
+            },
+            {
+                "rule": {
+                    "rule": "(?i)inscri(?:[cç][aã]o)?[\\s:\\-–—]*()",
+                    "validation_regex": "^$"
+                },
+                "weight": 4
+            }
+        ],
+        "seccional": [
+            {
+                "rule": {
+                    "rule": "(?i)\\b(Seccional(?:\\s+[A-Za-zÀ-ÖØ-öø-ÿ0-9\\.\\-]{1,40}){0,3})[\\s\\n]*(?=(?:Subsecao|Situacao|Inscricao|Nome|Categoria|Endereco(?:\\s+Profissional)?|Telefone(?:\\s+Profissional)?)|$)",
+                    "validation_regex": "(?i)^Seccional\\s+[A-Za-zÀ-ÖØ-öø-ÿ0-9\\.\\-]+(?:\\s+[A-Za-zÀ-ÖØ-öø-ÿ0-9\\.\\-]+){0,3}$"
+                },
+                "weight": 1834
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Seccional[\\s\\n]*()(?=(?:Nome|Inscricao|Inscrição|Subsecao|Subseção|Categoria|Endereco Profissional|Endereço Profissional|Telefone Profissional|Telefone|Situacao|Situação|$))",
+                    "validation_regex": "^$"
+                },
+                "weight": 273
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Inscri(?:c|ç)ao[\\s:]*\\d+\\s+([A-Z]{2})(?=\\s|$|(?i:Nome|Subsecao|Categoria|Endereco|Endereco Profissional|Telefone|Telefone Profissional|Situacao))",
+                    "validation_regex": "^[A-Z]{2}$"
+                },
+                "weight": 37
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bseccional\\b[\\s:\\-–—]*([A-Z]{2})(?=\\b|[\\s,\\-]|$)",
+                    "validation_regex": "(?i)^[A-Z]{2}$"
+                },
+                "weight": 18
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Inscri(?:ção|cao)\\b[\\s:,-]*([A-Za-z]{2})(?=[\\s\\n]+(?:Subsecao|Subseção|Categoria|Endere[cç]o\\s+Profissional|Endereco\\s+Profissional|Telefone\\s+Profissional|Telefone|Situac(?:ao|ão)|Nome|Inscri(?:ção|cao)|$))",
+                    "validation_regex": "^[A-Za-z]{2}$"
+                },
+                "weight": 10
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Telefone(?:\\s+Profissional)?[\\s\\S]{0,80}?\\b([A-Z]{2})\\b(?=\\s+(?:Subsecao|Subseção|Nome|Inscricao|Inscrição|Categoria|Endereco|Endereço|Telefone|Situacao|Situação|$))",
+                    "validation_regex": "^[A-Z]{2}$"
+                },
+                "weight": 6
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Seccional\\b[\\s:–\\-]*([A-Z]{2})",
+                    "validation_regex": "(?i)^(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$"
+                },
+                "weight": 3
+            }
+        ],
+        "subsecao": [
+            {
+                "rule": {
+                    "rule": "(?i)\\b(Subsec(?:ao|ão)\\b[^\\n]{0,120}?)\\s*(?=(?:\\b(?:situacao|situa[cç][aã]o|inscricao|inscri[cç][aã]o|nome|seccional|categoria|endereco profissional|endereco|telefone profissional|telefone)\\b|$))",
+                    "validation_regex": "(?i)^(?!.*\\b(?:nome|inscricao|seccional|categoria|endereco|telefone|situacao)\\b)Subsec(?:ao|ão)\\b[\\sA-Za-zÀ-ÖØ-öø-ÿ0-9\\-\\.,]{2,120}$"
+                },
+                "weight": 1575
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bSubse(?:ç|c)ao\\b[\\s\\r\\n]*()(?=(?:Nome\\b|Inscri(?:ç|c)ao\\b|Seccional\\b|Categoria\\b|Endere(?:ç|c)o(?:\\s+Profissional)?\\b|Telefone(?:\\s+Profissional)?\\b|Situac(?:ã|a)o\\b|$))",
+                    "validation_regex": "^$"
+                },
+                "weight": 458
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Seccional(?:\\s+[A-Z]{2})?\\s+([A-Za-zÀ-ÖØ-öø-ÿ0-9\\.\\-\\'\\/\\s]{2,120}?)(?=\\s*(?:Categoria|Enderec(?:o|ço)\\s+Profissional|Telefone(?:\\s+Profissional)?|Situac(?:a|ã)o|Nome|Inscri[cç][aã]o|$))",
+                    "validation_regex": "(?i)^(?!.*(?:nome|inscricao|seccional|categoria|endereco|endereço|telefone|situacao))[A-Za-zÀ-ÖØ-öø-ÿ0-9\\.\\-\\'\\/\\s]{2,120}$"
+                },
+                "weight": 46
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Inscri(?:ç|c)ao[\\s:]*\\d+\\b[\\s]*[A-Z]{1,4}\\b[\\s]*([A-Za-zÀ-ÖØ-öø-ÿ0-9\\.\\-\\/\\'(),\\s]{2,120}?)\\s*(?=(?:Nome\\b|Inscri(?:ç|c)ao\\b|Seccional\\b|Subse(?:ç|c)ao\\b|Categoria\\b|Endere(?:ço|co)(?:\\s+Profissional)?\\b|Endereco Profissional\\b|Endereco\\b|Telefone(?:\\s+Profissional)?\\b|Telefone Profissional\\b|Telefone\\b|Situacao\\b|Situação\\b|Advogado\\b|Advogada\\b|$))",
+                    "validation_regex": "(?i)^(?!.*(?:Nome|Inscri(?:ç|c)ao|Seccional|Categoria|Endere(?:ço|co)|Endereco(?:\\s+Profissional)?|Telefone(?:\\s+Profissional)?|Situacao|Situação))[A-Za-zÀ-ÖØ-öø-ÿ0-9\\.\\-\\/\\'(),\\s]{2,120}$"
+                },
+                "weight": 29
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bsubse[cç][ãa]o\\b[:\\s\\-–—]*([^\\s\\r\\n][^\\r\\n]{0,119}?)(?=(?:nome|inscri(?:c|ç)ao|seccional|categoria|endereco(?:\\s*profissional)?|endereço(?:\\s*profissional)?|telefone(?:\\s*profissional)?|situac(?:a|ã)o)|$)",
+                    "validation_regex": "^[A-Za-zÀ-ÖØ-öø-ÿ0-9'’\\-\\s]{2,120}$"
+                },
+                "weight": 2
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bsubsec[^\\s]{0,20}\\b\\s*(?:da|do|de)?\\s*([A-Za-zÀ-ÖØ-öø-ÿ0-9'’\\.\\-\\s]{2,120}?)(?=\\s*(?:seccional\\b|categoria\\b|situacao\\b|situação\\b|inscric(?:ao|ão)\\b|telefone\\b|endereco\\b|endereço\\b|$))",
+                    "validation_regex": "(?i)^(?!.*\\b(?:nome|inscric(?:ao|ão)|inscricao|seccional|categoria|endereco|endereço|telefone|situacao|situação)\\b)[A-Za-zÀ-ÖØ-öø-ÿ0-9'’\\.\\-\\s]{2,120}$"
+                },
+                "weight": 1
+            }
+        ],
+        "categoria": [
+            {
+                "rule": {
+                    "rule": "(?i)\\b(ADVOGADO|ADVOGADA|SUPLEMENTAR|ESTAGIARIO|ESTAGIARIA)\\b(?=[\\s,\\.\\-]*(?:Endereco|Endereço|Telefone(?:\\s*Profissional)?|Situacao|Situação|Nome|Inscricao|Inscrição|Seccional|Subsecao|Subseção|$))",
+                    "validation_regex": "^(?i:(?:ADVOGADO|ADVOGADA|SUPLEMENTAR|ESTAGIARIO|ESTAGIARIA))$"
+                },
+                "weight": 1774
+            },
+            {
+                "rule": {
+                    "rule": "(?i)categoria(?:(?:[ \\t]*\\r?\\n){0,2}[ \\t]*)()(?=\\b(?:nome|inscri(?:c|ç)(?:a|ã)o|seccional|subse(?:c|ç)(?:a|ã)o|endereco(?:\\s*profissional)?|telefone(?:\\s*profissional)?|situac(?:a|ã)o)\\b|$)",
+                    "validation_regex": "^$"
+                },
+                "weight": 439
+            },
+            {
+                "rule": {
+                    "rule": "(?i)categoria[\\s:]*\\b(advogado|advogada|suplementar|estagiario|estagiaria)\\b",
+                    "validation_regex": "(?i)^(?:advogado|advogada|suplementar|estagiario|estagiaria)$"
+                },
+                "weight": 53
+            }
+        ],
+        "endereco_profissional": [
+            {
+                "rule": {
+                    "rule": "(?i)Endere[cç]o\\s*Profissional[:\\s]*([^\\r\\n]+?)\\s*(?=\\s*(?:Telefone\\s*Profissional\\b|Telefone\\b|Situacao\\b|Situação\\b|Nome\\b|Inscri(?:c|ç)ao\\b|Seccional\\b|Subsecao\\b|Subseção\\b|Categoria\\b|$))",
+                    "validation_regex": "^(?!.*(?i:Telefone|Situacao|Situação|Nome|Inscricao|Inscrição|Seccional|Subsecao|Subseção|Categoria))[A-Za-zÀ-ÖØ-öø-ÿ0-9\\.,\\/\\-\\s'ºª()]{5,200}$"
+                },
+                "weight": 1757
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bend[eéèê]re[cç]o(?:\\s+do)?\\s+profissional\\b[\\s\\n]*()(?=\\s*(?:\\b(?:nome|inscri[cç][aã]o|seccional|subsecao|subse[cç][aã]o|categoria|telefone(?:\\s*profissional)?|situa[cç][aã]o)\\b)|$)",
+                    "validation_regex": "^$"
+                },
+                "weight": 660
+            },
+            {
+                "rule": {
+                    "rule": "(?i)(?:end[eé]reco(?:\\s+do)?\\s+profissional\\b[\\s:\\-–]*|Categoria\\b\\s+\\S+\\s+)\\s*(?=[\\s\\S]{0,240}?\\d)([A-Za-zÀ-ÖØ-öø-ÿ0-9\\.,\\/\\-\\(\\)\\s]{5,300}?)\\s*(?=(?:Nome\\b|Inscri(?:ç|c)ao\\b|Seccional\\b|Subse(?:ç|c)ao\\b|Categoria\\b|Telefone(?:\\s+Profissional)?\\b|Situac(?:ã|a)o\\b|$))",
+                    "validation_regex": "(?i)^(?!.*(?:nome|inscri(?:ç|c)ao|seccional|subsecao|subse(?:ç|c)ao|categoria|telefone(?:_?profissional)?|situac(?:ã|a)o))(?=.*\\d)[A-Za-zÀ-ÖØ-öø-ÿ0-9\\.,\\/\\-\\(\\)\\s]{5,300}$"
+                },
+                "weight": 11
+            },
+            {
+                "rule": {
+                    "rule": "(?i)endere(?:ç|c)o\\s*profissional\\s*[:\\-]?\\s*(?:\\n\\s*)?([A-Za-zÀ-ÖØ-öø-ÿ0-9.,/\\-\\s]{5,200}?)(?=\\s*(?:\\b(?:nome|seccional|subse[cç]ao\\w*|categoria|situac[aã]o|telefone(?:\\s*profissional)?|inscric(?:i|ã)o)\\b|$))",
+                    "validation_regex": "^(?!.*(?i:(?:nome|seccional|subse[cç]ao|categoria|situac[aã]o|telefone|inscric(?:i|ã)o)))[A-Za-zÀ-ÖØ-öø-ÿ0-9.,/\\-\\s]{5,200}$"
+                },
+                "weight": 2
+            },
+            {
+                "rule": {
+                    "rule": "(?i)[eéêè]nd[eéêè]r[eéêè][cç][oóôõ]\\s*profissional(?:\\s*[:\\-]?\\s*)()",
+                    "validation_regex": "^$"
+                },
+                "weight": 2
+            }
+        ],
+        "telefone_profissional": [
+            {
+                "rule": {
+                    "rule": "(?i)Telefone\\s*Profissional[:\\s]*([+]?\\d{1,3}(?:[\\s\\-\\/]?\\(?\\d{1,3}\\)?){0,1}[\\s\\-]?\\d{4,5}[\\s\\-]?\\d{4})(?=\\s*(?:Situacao|Situa[cç][aã]o|Endereco\\s*Profissional|Endere[cç]o\\s*Profissional|Endereco|Endere[cç]o|Nome|Inscri[cç][aã]o|Inscricao|Seccional|Subse[cç][aã]o|Subsecao|Categoria|$))",
+                    "validation_regex": "^\\+?\\d{1,3}[\\s\\-]?(?:\\(?\\d{1,3}\\)?[\\s\\-]?)?\\d{4,5}[\\s\\-]?\\d{4}$"
+                },
+                "weight": 1161
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Telefone\\s*Profissional[\\s\\n]*()(?=(?:Nome|Inscri\\u00e7\\u00e3o|Inscricao|Seccional|Subse\\u00e7\\u00e3o|Subsecao|Categoria|Endere\\u00e7o\\s*Profissional|Endereco\\s*Profissional|Endere\\u00e7o|Endereco|Situa\\u00e7\\u00e3o|Situacao|$))",
+                    "validation_regex": "^$"
+                },
+                "weight": 479
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\b((?:\\+?\\d{1,3}[\\s-]?)?(?:\\(?\\d{2}\\)?)[\\s-]?\\d{4,5}[-\\s]?\\d{4})\\b(?=\\s*(?:Situacao|Situação|Nome|Inscricao|Seccional|Subsecao|Categoria|Endereco Profissional|$))",
+                    "validation_regex": "^(?:\\+?\\d{1,3}[\\s-]?)?(?:\\(?\\d{2}\\)?)[\\s-]?\\d{4,5}[-\\s]?\\d{4}$"
+                },
+                "weight": 273
+            },
+            {
+                "rule": {
+                    "rule": "(?i)Telefone(?:\\s+Profissional)?\\s*[:\\-–]?\\s*([+\\d()\\.\\-\\s]{6,20})(?=\\s*(?:$|\\r?\\n|Nome|Inscricao|Seccional|Subsecao|Categoria|Endereco|Endereço|Situacao))",
+                    "validation_regex": "^\\+?[0-9()\\.\\-\\s]{6,20}$"
+                },
+                "weight": 55
+            },
+            {
+                "rule": {
+                    "rule": "(?i)(?:telefone(?:\\s*profissional)?|tel\\.?|(?:categoria|advogado)[\\s:\\-]*)?[\\s]*([+]?55[ \\-]?\\(?\\d{2}\\)?[ \\-]?\\d{4,5}[ \\-]?\\d{4})(?=\\s|$)",
+                    "validation_regex": "^\\+?55[ \\-]?\\(?\\d{2}\\)?[ \\-]?\\d{4,5}[ \\-]?\\d{4}$"
+                },
+                "weight": 15
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\btelefone\\s*profissional\\b[:\\s\\-]*([()\\d+\\.\\-\\s]{6,30})",
+                    "validation_regex": "^\\(?\\d{2,3}\\)?[\\s\\-]?\\d{3,4}[\\s\\-]?\\d{4}$"
+                },
+                "weight": 10
+            }
+        ],
+        "situacao": [
+            {
+                "rule": {
+                    "rule": "(?i)\\bsituacao\\b[\\s:–—-]*([A-Za-zÀ-ÖØ-öø-ÿ0-9'.,\\-/\\s]{2,120}?)(?=\\s*(?:Nome|Inscricao|Seccional|Subsecao|Categoria|Endereco Profissional|Endereco|Telefone Profissional|Telefone|$))",
+                    "validation_regex": "^(?!.*(?i:Nome|Inscricao|Seccional|Subsecao|Categoria|Endereco|Endereco Profissional|Telefone|Telefone Profissional))[A-Za-zÀ-ÖØ-öø-ÿ0-9'.,\\-\\/\\s]{2,120}$"
+                },
+                "weight": 1684
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\b(Situa[çc][ãa]o(?:(?!\\b(?:Nome|Inscri(?:c|ç)ao|Seccional|Subsec(?:ao|ão)|Categoria|Enderec(?:o|ç)o|Telefone)\\b).){0,60})\\s*(?=\\b(?:Nome\\b|Inscri(?:c|ç)ao\\b|Seccional\\b|Subsec(?:ao|ão)\\b|Categoria\\b|Enderec(?:o|ç)o(?:\\s+Profissional)?\\b|Telefone(?:\\s+Profissional)?\\b|$))",
+                    "validation_regex": "(?i)^Situa[çc][ãa]o(?:\\s+[A-Za-zÀ-ÖØ-öø-ÿ'’\\-\\d\\.\\+\\/\\(\\)]{2,60})?$"
+                },
+                "weight": 795
+            },
+            {
+                "rule": {
+                    "rule": "(?i)\\bSitua[cç][ãa]o\\b\\s*[:\\-]?\\s*()",
+                    "validation_regex": "^$"
+                },
+                "weight": 10
+            },
+            {
+                "rule": {
+                    "rule": "(?i)(?:situacao|situação)\\s*[:\\-–]?\\s*()",
+                    "validation_regex": "^$"
+                },
+                "weight": 2
+            }
+        ]
+    }
+}

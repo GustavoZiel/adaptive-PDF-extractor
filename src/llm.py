@@ -58,13 +58,12 @@ Schema: {{"categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, EST
 ---
 """
 
-
 RULE_GENERATION_PROMPT = r"""
 You are an expert automation engineer specializing in **robust text extraction** from semi-structured documents.
-Your task is to generate **a single, robust extraction rule** for a specific data field.
+Your task is to generate **a single, robust regex extraction rule** for a specific data field.
 
 The goal is to create an **atomic rule** that reliably finds this value in future documents.
-The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Endereço Profissional") or patterns directly related to the field itself, **not the position of other fields**.
+The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Endereço Profissional") or patterns directly related to the field itself.
 
 -----
 
@@ -80,50 +79,156 @@ The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Ender
 
 **CRUCIAL CONSTRAINTS: WHAT TO AVOID**
 
-1.  **Coupled Rules**
-      \* Bad: "Find the text on the line after the 'inscricao' field."
-      \* Good: "Find the text immediately after the keyword 'Subseção'."
+1.  **Keyword vs. Value Confusion**
+    * Extraction Rule must capture the **value**, not the anchor.
+    * Bad: `(Situação)` → matches anchor, not value.
+    * Good: `Situação\s+([^\n]+)` → captures the actual value.
 
-2.  **Keyword vs. Value Confusion**
-      \* Extraction Rule must capture the **value**, not the anchor.
-      \* Bad: `(Situação)` → matches anchor, not value.
-      \* Good: `Situação\s+([^\n]+)` → captures the actual value.
-
-3.  **Permissive Validation**
-      \* `validation_regex` must be specific and fail on contamination from other fields.
-      \* Bad: `^[A-Z\s]+$` → would match unrelated field text.
-      \* Good: `^(?!.*(?i:{{other_keywords_joined}}))[A-ZÀ-ÖØ-öø-ÿ''\-\s]{{2,120}}$`
+2.  **Permissive Validation**
+    * `validation_regex` must be specific and fail on contamination from other fields.
+    * Bad: `^[A-Z\s]+$` → would match unrelated field text.
+    * Good: `^(?!.*(?i:{{other_keywords_joined}}))[A-ZÀ-ÖØ-öø-ÿ''\-\s]{{2,120}}$`
 
 -----
 
-**RULE GENERATION STEPS:**
+**HANDLING NULL FIELDS (Empty String Values)**
 
-**STEP 0 (MANDATORY): Check if field is NULL**
+When `field_value` is an empty string `""`, the field is null/empty in the document.
 
-  -  Look at the `field_value` input below
-  -  **IF `field_value` is `null` or `None`:**
-      → You MUST use `"conditional_null"` strategy
-      → Skip to the **`🚨 CRITICAL: How to Configure a "conditional_null" Strategy 🚨`** section below.
-  -  **IF `field_value` has a value:**
-      → DO NOT use `"conditional_null"`
-      → Continue to steps 1-4 below
+**CRITICAL UNDERSTANDING:**
+A null field means the field's label/keyword exists BUT has no value before the next field.
+The regex must **verify the absence of content**, not just capture an empty group.
 
-**For Non-NULL fields:**
+**Your Task:**
+Create a regex that:
+1.  Finds the field's label/keyword
+2.  Skips any whitespace/newlines after it
+3.  **Verifies** that what follows is either:
+    * Another field's keyword (from `other_keywords`)
+    * End of text `$`
+4.  Captures empty string `()` to indicate null
 
-1.  Analyze nearby text to find the **next anchor** for the field, can be anything.
-2.  Determine the **typical format** of the expected value (letters, digits, length, accents).
-3.  Ensure **cross-field contamination** is prevented using `{other_keywords}`.
-4.  Generate the final JSON rule containing:
-      -  `rule` (regex capturing only the value)
-      -  `validation_regex` (must fail on other field keywords)
+**REGEX PATTERN STRUCTURE FOR NULL FIELDS:**
+```
+
+(?i)FieldLabel[\\s\\n]*()(?=[\\s\\n]*(?:NextKeyword1|NextKeyword2|...|$))
+
+```
+
+**COMPONENTS EXPLAINED:**
+- `(?i)` - Case insensitive matching (optional but recommended)
+- `FieldLabel` - The exact field label/keyword (e.g., "Categoria", "Inscricao")
+- `[\s\n]*` - Skip any whitespace/newlines after label
+- `()` - Empty capture group that returns ""
+- `(?=...)` - **MANDATORY LOOKAHEAD** - verifies what comes next WITHOUT consuming it
+- `[\s\n]*` - INSIDE lookahead: skip whitespace before checking next keyword
+- `(?:NextKeyword1|NextKeyword2|...)` - Non-capturing group with all next field keywords
+- `$` - End of text (for last field case)
+
+**CRITICAL: The lookahead has TWO parts:**
+1.  `[\s\n]*` - Skip whitespace inside the lookahead
+2.  `(?:Keyword1|Keyword2|...)` - Check if next non-whitespace text is a keyword
+
+This handles cases like: `Nome   \n\n   Inscricao` (whitespace between fields)
+
+**WHY LOOKAHEAD IS MANDATORY:**
+Without lookahead, `Categoria\s*()` would match even if there's content:
+```
+
+Bad: "Categoria\\nADVOGADO" → matches and returns "" (WRONG\!)
+Good: "Categoria[\\s\\n]*()(?=[\\s\\n]*(?:Endereco|$))" → NO match because ADVOGADO follows
+
+```
+
+The lookahead with `[\s\n]*` inside handles whitespace-only gaps:
+```
+
+"Nome   \\n   Inscricao" → lookahead skips whitespace, finds "Inscricao" → Match ✓
+"Nome123Inscricao" → lookahead finds "123", not "Inscricao" → NO match ✓
+
+````
+
+**EDGE CASES YOU MUST HANDLE:**
+
+1.  **Field is in the middle of document (normal case):**
+    ```
+    Text: "Categoria\nEndereco Profissional: Rua ABC"
+    Rule: "(?i)Categoria[\s\n]*()(?=Endereco|Telefone|...|$)"
+    Result: Matches ✓ (truly null)
+    ```
+
+2.  **Field is the LAST field in document:**
+    ```
+    Text: "...Telefone: 123456\nCategoria"
+    Rule: "(?i)Categoria[\s\n]*()(?=Endereco|Telefone|...|$)"
+    Result: Matches via $ ✓ (truly null, last field)
+    ```
+
+3.  **Field label exists but HAS content (should NOT match):**
+    ```
+    Text: "Categoria\nADVOGADO\nEndereco: Rua ABC"
+    Rule: "(?i)Categoria[\s\n]*()(?=Endereco|Telefone|...|$)"
+    Result: NO match ✗ (has value "ADVOGADO", not in lookahead list)
+    ```
+
+4.  **Multiple whitespaces/newlines between null field and next:**
+    ```
+    Text: "Categoria\n\n\nEndereco: Rua ABC"
+    Rule: "(?i)Categoria[\s\n]*()(?=[\s\n]*(?:Endereco|Telefone|...|$))"
+    Result: Matches ✓ ([\s\n]* in lookahead handles multiple whitespace)
+    ```
+
+5.  **Content between field label and next field (should NOT match):**
+    ```
+    Text: "Nome123231Inscricao: 456789"
+    Rule: "(?i)Nome[\s\n]*()(?=[\s\n]*(?:Inscricao|Categoria|...|$))"
+    Result: NO match ✗ (lookahead finds "123231", not "Inscricao")
+    Explanation: After "Nome", lookahead skips whitespace (none here),
+    then checks if next chars match keywords. Finds "1" instead → fails.
+    ```
+
+**BUILDING THE LOOKAHEAD - CRITICAL RULES:**
+
+1.  **Include EVERY field keyword** from `other_keywords`:
+    * If other_keywords = ['nome', 'inscricao', 'endereco', 'telefone']
+    * Lookahead: `(?=nome|inscricao|endereco|telefone|$)`
+
+2.  **Use case-insensitive matching** in lookahead when possible:
+    * `(?=(?i:nome|inscricao|endereco)|$)`
+    * OR use `(?i)` at start of full pattern
+
+3.  **ALWAYS include `$`** at the end for last-field case
+
+4.  **Match the EXACT keyword form** as it appears in text:
+    * If text has "Endereço Profissional", use that exact string
+    * Better: use partial match like `(?=Endere|Telefone|$)`
+
+**EXAMPLE RULE FOR NULL FIELD:**
+{{
+  "rule": "(?i)Categoria[\\s\\n]*()(?=[\\s\\n]*(?:Endereco|Telefone|Inscricao|Nome|$))",
+  "validation_regex": "^$"
+}}
+
+**This pattern:**
+- `(?i)` - Case insensitive
+- `Categoria` - Finds the field label
+- `[\\s\\n]*` - Skips any whitespace/newlines after label
+- `()` - Captures empty string
+- `(?=[\\s\\n]*(?:Endereco|Telefone|Inscricao|Nome|$))` - **VERIFIES** next field or end
+  - First `[\\s\\n]*` inside lookahead skips whitespace
+  - Then `(?:...)` checks if next non-whitespace is a keyword or end
+- **ONLY matches when field is truly empty** (no content between label and next keyword)
+
+**WHAT HAPPENS IN EXECUTION:**
+1.  Regex finds "Categoria"
+2.  Skips whitespace
+3.  Lookahead checks: "Is next character start of another field keyword or end?"
+4.  If YES → Match succeeds, capture group returns ""
+5.  If NO → Match fails, returns None (field has a value)
 
 -----
 
 **INPUTS**
-
-🔍 **FIRST: Check field_value below to determine your strategy\!**
-  -  If NULL/None → Use "conditional_null" strategy
-  -  If has value → Use "regex" or "next_line" strategy
 
 1.  **Full Text (`full_text`):**
     {text}
@@ -131,8 +236,9 @@ The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Ender
 2.  **Field to Analyze (`field_name`):**
     "{field_name}"
 
-3.  **⚠️ Extracted Value (`field_value`):** 👈 CHECK THIS FIRST\!
+3.  **Extracted Value (`field_value`):**
     "{field_value}"
+    (Note: Empty string "" means the field is null/empty)
 
 4.  **Field Description (`field_description`):**
     "{field_description}"
@@ -144,163 +250,73 @@ The rule MUST be based on **stable anchor keywords** (like "Inscrição", "Ender
 
 **OUTPUT INSTRUCTIONS**
 
-  -  Both `"rule"` and `"validation_regex"` are mandatory.
-  -  Extraction regex **must include a capture group `( )` for the value**, not the anchor.
-  -  **CRITICAL:** When `"type"` is `"keyword"`, the `"keyword"` value MUST be the **exact, case-sensitive `field_name`** from the input (e.g., "subsecao", "categoria"). It must NOT be a capitalized or accented version found in the text (e.g., NOT "Subseção", "Categoria").
+  - Both `"rule"` and `"validation_regex"` are mandatory.
+  - Extraction regex **must include a capture group `( )` for the value**.
+  - For null fields (empty string value), use an empty capture group `()`.
 
 **Rule Schema**
 {{
-  "type": "regex or keyword",
-  "rule": "Python-compatible regex pattern capturing only the value (null if not applicable)",
-  "keyword": "Anchor keyword (null if regex is used)",
-  "strategy": "Strategy for keyword usage (e.g., 'next_line', 'multiline_until_stop', 'conditional_null')",
-  "stop_keyword": "Next anchor (can be anything, null if not applicable)",
-  "line_number": "Optional, use only if position is necessary",
-  "validation_regex": "Regex to validate the value format, must fail on contamination."
+  "rule": "Python-compatible regex pattern capturing only the value",
+  "validation_regex": "Regex to validate the value format (use ^$ for empty strings)"
 }}
 
 -----
 
-**EXAMPLES (For Non-NULL fields)**
+**EXAMPLES**
 
-1.  **Regex Rule**
-
-<!-- end list -->
+1.  **Normal Field (with value)**
 
   * field_name: "inscricao"
   * field_value: "101943"
   * other_keywords: ['nome','seccional','subsecao','categoria','situacao']
     {{
-      "type": "regex",
       "rule": "Inscrição[^\\\\d]\*(\\d{{6}})",
-      "keyword": null,
-      "strategy": null,
-      "stop_keyword": null,
-      "line_number": null,
       "validation_regex": "^\\d{{6}}$"
     }}
 
-<!-- end list -->
+2.  **Null Field (empty value)**
 
-2.  **Keyword Rule (with value)**
-
-<!-- end list -->
-
-  * field_name: "subsecao"
-  * field_value: "Conselho Seccional - Paraná"
-  * other_keywords: ['nome','inscricao','seccional','categoria','situacao']
+  * field_name: "categoria"
+  * field_value: "" (empty string)
+  * other_keywords: ['nome','inscricao','seccional','subsecao','situacao']
     {{
-      "type": "keyword",
-      "rule": null,
-      "keyword": "subsecao",
-      "strategy": "next_line",
-      "stop_keyword": null,
-      "line_number": null,
-      "validation_regex": "^(?\!.*(?i:nome|inscricao|seccional|categoria|situacao)).*[A-ZÀ-ÖØ-öø-ÿ''-\\s]+$"
+      "rule": "(?i)Categoria[\\\\s\\\\n]*()(?=[\\\\s\\\\n]*(?:Nome|Inscricao|Seccional|Subsecao|Situacao|$))",
+      "validation_regex": "^$"
     }}
-
------
-
-**🚨 CRITICAL: How to Configure a "conditional_null" Strategy 🚨**
-
-You are in this section because **STEP 0** determined that `field_value` is `null`.
-The `"conditional_null"` strategy detects when a field is genuinely empty by checking for only whitespace between two anchor keywords.
-
-**Your Task:**
-You must create a rule anchored to the field's **own label** (the `keyword`). The executor (the Python code) checks for whitespace between this label and the `stop_keyword`.
-
-Your goal is to find the **IMMEDIATELY adjacent anchor**. This `stop_keyword` **MUST** be the **very next stable token, keyword, or marker** that appears in the text right after the field label.
-
-**Do not skip over *any* text to find a "better" or "more logical" anchor.** If the label is `Categoria` and the very next line is `---`, the `stop_keyword` is `"---"`, *not* the "Endereco" label that appears later.
-
-**Text Example:**
-
-```
-
-Nome: João Silva
-Seccional: OAB-SP
-Categoria
-
-Endereco Profissional: Rua ABC
-
-```
-
-**Analysis:** The label "Categoria" is present, but its value is empty. The *immediately* next anchor is "Endereco Profissional". (Assume input `field_name` was "categoria").
-
-**How to Configure:**
-
-  * `"type"`: `"keyword"`
-  * `"strategy"`: `"conditional_null"`
-  * `"keyword"`: The **exact** input `field_name` (e.g., `"categoria"`).
-  * `"stop_keyword"`: The **IMMEDIATELY next reliable anchor** after the field label. This is a critical instruction. Select the **very first token or keyword** (e.g., `"Endereco Profissional"`, `"867502319"`, `"---"`, `"CE"`) that appears after the field label. **DO NOT SKIP AHEAD.**
-  * `"validation_regex"`: `"^__NULL__$"`
-  * `"rule"`: `null`
-
-**Example 1:**
-
-```
-Inscricao
-CE Subsecao Machado - Ceará
-...
-```
-
-The label is `Inscricao` (`keyword`="inscricao"). The **immediately next token** is "CE".
-
-  * **Correct:** `"stop_keyword" = "CE"`
-  * **Incorrect:** `"stop_keyword" = "Subsecao"` (This skips "CE")
-
-**Example 2:**
-
-```
-Nome 867502319
-Seccional CE Subsecao Vieira de Santos - Alagoas
-...
-```
-
-The label is `Nome` (`keyword`="nome"). The **immediately next token** is "867502319".
-
-  * **Correct:** `"stop_keyword" = "867502319"`
-  * **Incorrect:** `"stop_keyword" = "Seccional"` (This skips "867502319")
-
-**Special Case: Last Field is NULL**
-If the empty field is the *last* one in the document, there is no next anchor.
-
-**Text Example:**
-
-```
-
-...
-Telefone: +55 11 1234-5678
-Situacao
-(end of document)
-
-```
-
-**Analysis:** (Assume input `field_name` was "situacao").
-
-**How to Configure:**
-
-  * `"keyword"`: The **exact** input `field_name` (e.g., `"situacao"`).
-  * `"stop_keyword"`: `null` (This tells the system to check for whitespace until the end of the text)
-
-**Summary: `conditional_null` Checklist**
-
-  -  **Always set these:**
-      -  `"type"`: `"keyword"`
-      -  `"strategy"`: `"conditional_null"`
-      -  `"validation_regex"`: `"^__NULL__$"`
-      -  `"rule"`: `null`
-  -  **Set these based on the text:**
-      -  `"keyword"`: The **exact** input `field_name` (e.g., "categoria", "situacao").
-      -  `"stop_keyword"`: The **IMMEDIATELY** next anchor. You MUST select the **first stable token, keyword, or separator** that follows the label. If absolutely nothing follows the label until the end of the document, use `null`.
-
-\*(Note: The rule must be generated with the **exact** `field_name` as the `keyword`.
+    Explanation:
+    - `(?i)` makes matching case-insensitive
+    - `Categoria` finds the field label
+    - `[\\\\s\\\\n]*` skips any whitespace/newlines after label
+    - `()` captures empty string
+    - `(?=[\\\\s\\\\n]*(?:Nome|Inscricao|...))` lookahead with inner whitespace skip
+    - Handles: "Categoria\n\nNome" ✓, "Categoria123Nome" ✗ (has content)
 
 -----
 
 **Your Turn**
 
 Generate the extraction rule for the field `"{field_name}"`.
+
+**FOR NULL FIELDS (field_value = ""):**
+You MUST create a regex that:
+1.  Uses case-insensitive flag: `(?i)`
+2.  Finds the field label (use capitalized form as it appears in text)
+3.  Skips whitespace after label: `[\\s\\n]*`
+4.  Captures empty: `()`
+5.  **MANDATORY LOOKAHEAD** with structure: `(?=[\\s\\n]*(?:Keyword1|Keyword2|...|$))`
+    -   The `[\\s\\n]*` INSIDE lookahead is crucial
+    -   It allows whitespace between label and next keyword
+    -   Without it, "Nome   Inscricao" wouldn't match (has spaces)
+6.  validation_regex: `^$`
+
+**Pattern Template:**
+`(?i)FieldLabel[\\s\\n]*()(?=[\\s\\n]*(?:NextField1|NextField2|NextField3|...|$))`
+
+**CRITICAL:**
+-   The lookahead has TWO parts: `[\\s\\n]*` then `(?:keywords|$)`
+-   This handles whitespace-only gaps between fields
+-   Must include ALL keywords from `other_keywords`
+-   Detects "Nome  Inscricao" as null ✓, "Nome123Inscricao" as non-null ✗
 """
 
 # ============================================================================

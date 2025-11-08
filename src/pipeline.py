@@ -21,7 +21,6 @@ logger = get_logger(__name__)
 
 def extract_with_cache(
     cache,
-    label: str,
     text_data: str,
     all_fields: List[str],
 ) -> Tuple[Dict[str, str], List[str], List[str]]:
@@ -32,7 +31,6 @@ def extract_with_cache(
 
     Args:
         cache: Cache instance containing learned rules
-        label: Document label/type for cache lookup
         text_data: Raw text to extract from
         all_fields: List of all field names to extract
 
@@ -51,7 +49,7 @@ def extract_with_cache(
 
         if extracted_text is not None:
             # Cache hit - rule successfully extracted value
-            if extracted_text == "__NULL__":
+            if extracted_text == "":
                 ans[field_name] = None
                 logger.info("✓ Field '%s' extracted: NULL (field is empty)", field_name)
             else:
@@ -245,25 +243,3 @@ def generate_rules_for_fields(
     )
 
     return rules_generated, total_prompt_tokens, total_completion_tokens, llm2_calls
-
-
-# ============================================================================
-# SECTION 4: Helper Functions
-# ============================================================================
-
-
-def calculate_extraction_cost(
-    prompt_tokens: int, completion_tokens: int, price_in: float, price_out: float
-) -> float:
-    """Calculate cost of LLM extraction.
-
-    Args:
-        prompt_tokens: Number of input tokens
-        completion_tokens: Number of output tokens
-        price_in: Cost per input token
-        price_out: Cost per output token
-
-    Returns:
-        Total cost in dollars
-    """
-    return (prompt_tokens * price_in) + (completion_tokens * price_out)

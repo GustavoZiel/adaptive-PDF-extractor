@@ -135,8 +135,6 @@ def main(args: Args):
        c. Generate and cache new rules for future use
     3. Track metrics and save results
     """
-    # Convert Args to Config
-    # config = Config.from_args(args)
     config = args
     logger.info("Starting extraction pipeline")
     logger.debug("Configuration: %s", config)
@@ -412,7 +410,6 @@ def main(args: Args):
 # ============================================================================
 
 if __name__ == "__main__":
-    # Parse CLI arguments
     args = tyro.cli(Args)
 
     # Setup logging

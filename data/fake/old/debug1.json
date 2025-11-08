@@ -1,0 +1,26 @@
+[
+  {
+    "label": "carteira_oab",
+    "extraction_schema": {
+      // "nome": "Nome do profissional, normalmente no canto superior esquerdo da imagem",
+      "inscricao": "Número de inscrição do profissional",
+      // "seccional": "Seccional do profissional",
+      // "subsecao": "Subseção à qual o profissional faz parte",
+      // "categoria": "Categoria, pode ser ADVOGADO, ADVOGADA, SUPLEMENTAR, ESTAGIARIO, ESTAGIARIA",
+      // "endereco_profissional": "Endereço do profissional",
+      // "telefone_profissional": "Telefone do profissional",
+      // "situacao": "Situação do profissional, normalmente no canto inferior direito."
+    },
+    "pdf_text": "Nome\nBenício da CunhaInscricao SeccionalSubsecao\nCategoria\tADVOGADAEndereco Profissional\nLadeira Raul Pastor, 6, Ambrosina, 08063608 Teixeira / PBTelefone Profissional 11 8353-3740\nSituação Regular",
+    "expected_answer": {
+      "nome": "Benício da Cunha",
+      "inscricao": null,
+      "seccional": null,
+      "subsecao": null,
+      "categoria": "ADVOGADA",
+      "endereco_profissional": "Ladeira Raul Pastor, 6, Ambrosina, 08063608 Teixeira / PB",
+      "telefone_profissional": "11 8353-3740",
+      "situacao": "Situação Regular"
+    }
+  }
+]
