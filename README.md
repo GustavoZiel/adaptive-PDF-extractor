@@ -143,8 +143,6 @@ uv run src/main.py \
 
 ## Estrutura do Projeto
 
-# TODO Update after merge
-
 ```text
 enter_ai_fellowship/
 ├── src/
@@ -159,7 +157,8 @@ enter_ai_fellowship/
 ├── scripts/
 │   └── generate_fake_data.py  # Geração de dados sintéticos
 ├── data/
-│   └── fake/            # Datasets sintéticos gerados
+│   ├── fake/            # Dados sintéticos gerados
+│   └── real/            # Dados reais
 ├── docs/
 │   ├── pipeline.md      # Arquitetura do pipeline
 │   ├── cache.md         # Sistema de cache adaptativo
@@ -179,8 +178,8 @@ enter_ai_fellowship/
 * **Tracking**: Weights & Biases + Weave para log de experimentos
 * **Linguagem**: Python 3.11+
 
-<!-- ## Agradecimentos
+## Agradecimentos
 
 Agradeço a oportunidade de realizar esse projeto, me diverti bastante e aprendi muito também! 🚀
 
-> Gustavo -->
+> Gustavo
