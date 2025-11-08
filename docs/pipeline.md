@@ -1,4 +1,3 @@
-````markdown
 ### Pipeline de Extração Adaptativa
 
 O sistema processa cada documento PDF através de um pipeline de **três etapas** que otimiza progressivamente a extração de dados estruturados via **aprendizado de regras** e **cache adaptativo**.
@@ -316,4 +315,3 @@ A cada documento processado, o cache:
 4. **Reduz custo** ao diminuir chamadas à LLM
 
 ---
-````
