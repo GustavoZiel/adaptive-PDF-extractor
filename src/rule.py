@@ -138,8 +138,12 @@ def generate_robust_rule(
     other_keywords = [fname for fname in all_fields if fname != field_name]
 
     # 1. Prepare the base prompt
-    base_prompt = create_rule_generation_prompt(
-        text, field_name, expected_value, field_description, other_keywords
+    base_prompt = RULE_GENERATION_PROMPT.format(
+        text=text,
+        field_name=field_name,
+        field_value=field_value,
+        field_description=field_description,
+        other_keywords=other_keywords,
     )
     feedback_history: List[str] = []  # Stores feedback from failures
 
@@ -228,13 +232,13 @@ Now, generate a **new and corrected** rule below:
             feedback_history.append(feedback)
             continue  # Try again
 
-        # 7. Validate No Other Keywords (Guard Rail)
-        feedback = _validate_no_other_keywords(
-            expected_value, other_keywords, field_name, current_attempt
-        )
-        if feedback:
-            feedback_history.append(feedback)
-            continue  # Try again
+        # # 7. Validate No Other Keywords (Guard Rail)
+        # feedback = _validate_no_other_keywords(
+        #     expected_value, other_keywords, field_name, current_attempt
+        # )
+        # if feedback:
+        #     feedback_history.append(feedback)
+        #     continue  # Try again
 
         # 8. Success! All validations passed
         logger.info(
@@ -461,28 +465,3 @@ def _validate_no_other_keywords(
         attempt,
     )
     return None
-
-
-# ============================================================================
-# SECTION 5: Prompt Templates
-# ============================================================================
-
-
-def create_rule_generation_prompt(
-    text: str,
-    field_name: str,
-    field_value: str,
-    field_description: str,
-    other_keywords: List[str],
-) -> str:
-    """Create rule generation prompt from the imported template.
-
-    This function uses the RULE_GENERATION_PROMPT from llm.py.
-    """
-    return RULE_GENERATION_PROMPT.format(
-        text=text,
-        field_name=field_name,
-        field_value=field_value,
-        field_description=field_description,
-        other_keywords=other_keywords,
-    )

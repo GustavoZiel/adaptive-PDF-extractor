@@ -157,9 +157,13 @@ def main(args: Args):
             config.cache_filename, config.data_folder
         )
     else:
+        if config.use_cache:
+            logger.warning(
+                "No cache file provided or cache disabled. Starting with empty cache"
+            )
+        else:
+            logger.warning("Cache disabled - operating in LLM-only mode")
         global_loaded_cache = None
-        if not config.use_cache:
-            logger.info("Cache disabled - operating in LLM-only mode")
 
     # Initialize metrics tracking
     metrics_tracker = None
