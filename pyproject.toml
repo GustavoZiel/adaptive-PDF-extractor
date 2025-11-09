@@ -1,7 +1,7 @@
 [project]
 name = "adaptive-PDF-extractor"
 version = "0.1.0"
-description = "Add your description here"
+description = "Adaptive Agent for Template-Based PDF Text Extraction with Cache Optimization"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

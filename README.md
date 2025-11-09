@@ -151,7 +151,8 @@ uv run src/main.py \
 ## Estrutura do Projeto
 
 ```text
-enter_ai_fellowship/
+
+adaptive-PDF-extractor/
 ├── src/
 │   ├── main.py          # Orquestração principal do pipeline
 │   ├── cache.py         # Sistema de cache LRU adaptativo
@@ -166,16 +167,13 @@ enter_ai_fellowship/
 ├── data/
 │   ├── fake/            # Dados sintéticos gerados
 │   └── real/            # Dados reais
-├── docs/
-│   ├── pipeline.md      # Arquitetura do pipeline
-│   ├── cache.md         # Sistema de cache adaptativo
-│   ├── rule.md          # Geração e validação de regras
-│   ├── fake_data.md     # Geração de dados sintéticos
-│   ├── experiment.md    # Experimentos realizados
-│   ├── architecture.md  # (em desenvolvimento)
-│   └── assets/          # Imagens e diagramas
-├── ai-fellowship-data/  # Dataset original do desafio
-└── wandb/               # Logs do Weights & Biases
+└── docs/
+    ├── pipeline.md      # Arquitetura do pipeline
+    ├── cache.md         # Sistema de cache adaptativo
+    ├── rule.md          # Geração e validação de regras
+    ├── fake_data.md     # Geração de dados sintéticos
+    ├── experiment.md    # Experimentos realizados
+    └── assets/          # Imagens e diagramas
 ```
 
 ## Tecnologias Utilizadas
