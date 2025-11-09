@@ -188,8 +188,8 @@ enter_ai_fellowship/
 ## Limitações
 
 * Como todo o sistema de otimização se baseia em expressões regulares, o principal desafio é criar regras que sejam suficientemente **gerais** para capturar variações nos documentos, mas **específicas** o bastante para evitar falsos positivos.
-  * Documentos com formatações muito diferentes podem exigir muitas regras distintas e específicas, o que pode limitar a eficiência da cache.
-  * Além disso, a etapa de geração das regras é a mais custosa, portanto o número máximo de tentativas deve ser balanceado para evitar custos excessivos.
+  * Documentos com formatações muito diferentes podem exigir muitas regras distintas e específicas, o que pode limitar a eficiência da reutilização dos itens da cache.
+  * A etapa de geração das regras é a mais custosa, portanto o número máximo de tentativas deve ser balanceado para evitar custos excessivos.
 
 * Lidar com valores nulos, seja em *labels* de campos ausentes ou em campos que podem ser opcionalmente vazios, também é um desafio.
   * A estratégia adotada foi permitir que a LLM gere regras que retornem valores nulos quando apropriado, mas isso introduz uma complexidade adicional na construção e validação das regras, resultando em um maior tempo de processamento.
