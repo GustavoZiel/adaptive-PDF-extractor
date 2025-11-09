@@ -15,22 +15,29 @@
 
 </div>
 
-<!-- # TODO - Melhorar, deixar mais direto e curto, apenas as porcentagens, redirecionar para o relatório completo com todos os detalhes.
-
 ## 🔥 **Resultados Principais**
 
-💡 **Desempenho de Referência (1.000 documentos sintéticos):**  
+💡 **Desempenho de Referência (1.000 documentos sintéticos):**
 
-- 🧠 **Precisão média:** `91.38%`  
-- ⚡ **Tempo médio de processamento:** `3.28s`  
-- 💰 **Redução progressiva de custo:** via **cache adaptativo de regras**
+* **Precisão média:** `≈98%`
+* **Tempo médio de processamento:** `0.76s` *(com cache)*
+* **Custo médio:** **$0.12**
+* **Redução drástica de chamadas à LLM:** de **1000 → 31**
 
-📊 **Comparativo:**  
+📊 **Comparativo direto:**
 
-- Esta implementação supera a extração base (**LLM puro**) com:  
-  - ➡️ **–X%** de tempo de processamento  
-  - ➡️ **–Y%** de custo total  
-  - sem comprometer a **alta precisão**. -->
+| Cenário       | LLM Calls | Tempo Médio | Custo | Performance |
+| ------------- | --------- | ----------- | ----- | ----------- |
+| **Com Cache** | 31        | 0.76s       | $0.12 | 98.26%      |
+| **Sem Cache** | 1000      | 13.61s      | $1.81 | 98.9%       |
+
+🚀 **Ganho obtido:**
+
+* **–94%** no tempo de processamento
+* **–93%** no custo total
+* **Precisão praticamente inalterada**
+
+🔗 **[Veja o experimento completo →](https://wandb.ai/gustavogrib-ggr-usp/adaptive-pdf-extractor/reports/Adaptative-PDF-Extractor-Analysis--VmlldzoxNDk4MjY0OQ?accessToken=sdl3m4ghmnv8tdnho85ia68qoxi88phpr9xp0pduj0lnjwfwwju1lg9fn38rr5tw)**
 
 ## Visão Geral
 
@@ -177,6 +184,18 @@ enter_ai_fellowship/
 * **Validação**: Pydantic para saídas estruturadas
 * **Tracking**: Weights & Biases + Weave para log de experimentos
 * **Linguagem**: Python 3.11+
+
+## Limitações
+
+* Como todo o sistema de otimização se baseia em expressões regulares, o principal desafio é criar regras que sejam suficientemente **gerais** para capturar variações nos documentos, mas **específicas** o bastante para evitar falsos positivos.
+  * Documentos com formatações muito diferentes podem exigir muitas regras distintas e específicas, o que pode limitar a eficiência da cache.
+  * Além disso, a etapa de geração das regras é a mais custosa, portanto o número máximo de tentativas deve ser balanceado para evitar custos excessivos.
+
+* Lidar com valores nulos, seja em *labels* de campos ausentes ou em campos que podem ser opcionalmente vazios, também é um desafio.
+  * A estratégia adotada foi permitir que a LLM gere regras que retornem valores nulos quando apropriado, mas isso introduz uma complexidade adicional na construção e validação das regras, resultando em um maior tempo de processamento.
+
+* Para que a otimização completa ocorra, é necessário preencher a cache com um número suficiente de regras que generalizem o *noise* presente em um determinado lote (*batch*) de documentos. Quanto maior for a variabilidade entre os documentos, mais regras serão necessárias para cobrir os casos, e, consequentemente, o tempo de processamento inicial será maior.
+  * Imaginando um cenário em que todos os documentos sejam únicos entre sí, o sistema não conseguiria aproveitar a cache, resultando em um desempenho semelhante ao de uma extração pura via LLM.
 
 ## Agradecimentos
 

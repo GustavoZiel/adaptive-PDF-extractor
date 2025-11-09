@@ -7,42 +7,46 @@ O sistema processa cada documento PDF através de um pipeline de **três etapas*
 ### Fluxo Principal
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  ENTRADA: PDF → OCR → Texto bruto                               │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-         ┌───────────────▼───────────────┐
-         │  ETAPA 1: Fast Path           │
-         │  Extração via Cache           │
-         └───────────┬───────────────────┘
-                     │
-        ┌────────────▼─────────────┐
-        │ Todos os campos extraídos?
-        └────┬─────────────────┬───┘
-             │ SIM             │ NÃO
-             │                 │
-             ▼                 ▼
-    ┌────────────────┐  ┌──────────────────────┐
-    │ ✓ Retorna      │  │  ETAPA 2: Slow Path  │
-    │   Resposta     │  │  Extração via LLM     │
-    └────────────────┘  └──────┬───────────────┘
-                               │
-                   ┌───────────▼────────────────┐
-                   │  ETAPA 3: Rule Learning    │
-                   │  Geração + Validação       │
-                   └───────────┬────────────────┘
-                               │
-                   ┌───────────▼────────────────┐
-                   │  Adiciona Regras ao Cache  │
-                   │  (LRU + Peso)              │
-                   └────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        ENTRADA: PDF → OCR → Texto bruto                      │
+└───────────────────────────────────┬──────────────────────────────────────────┘
+                                    │
+                                    ▼
+                     ┌───────────────────────────────────────────────┐
+                     │                   ETAPA 1: Fast Path          │
+                     │                Extração via Cache             │
+                     └──────────────────────┬────────────────────────┘
+                                            │
+                              ┌─────────────▼──────────────┐
+                              │ Todos os campos extraídos? │
+                              └─────────────┬──────────────┘
+                                            │
+                    ┌───────────────────────┴────────────────────────┐
+                    │                                                │
+                   SIM                                              NÃO
+                    │                                                │
+                    ▼                                                ▼
+       ┌──────────────────────────┐                  ┌───────────────────────────────┐
+       │   ✓ Retorna Resposta     │                  │        ETAPA 2: Slow Path     │
+       │                          │                  │        Extração via LLM       │
+       └──────────────────────────┘                  └──────────────┬────────────────┘
+                                                                   │
+                                               ┌───────────────────▼───────────────────┐
+                                               │        ETAPA 3: Rule Learning         │
+                                               │        Geração + Validação            │
+                                               └───────────────────┬───────────────────┘
+                                                                   │
+                                               ┌───────────────────▼───────────────────┐
+                                               │     Adiciona Regras ao Cache          │
+                                               │   (LRU + Peso adaptativo dinâmico)    │
+                                               └───────────────────────────────────────┘
 ```
 
 ---
 
 ### ETAPA 1: Extração via Cache (Fast Path)
 
-Tenta extrair **todos os campos** usando regras previamente aprendidas armazenadas no **cache adaptativo**.
+Tenta extrair **todos os campos** usando regras previamente aprendidas armazenadas na **cache adaptativa**.
 
 **Entrada:**
 * Texto bruto do documento
@@ -72,17 +76,17 @@ for campo in campos_necessarios:
 Quando uma regra extrai um campo com sucesso:
 1. Seu **peso é incrementado** (+1)
 2. É **reposicionada na lista** (regras mais usadas ficam no início)
-3. Próximas buscas são **mais rápidas** (verificação sequencial otimizada)
+3. Próximas buscas são **mais rápidas** (verificação sequencial)
 
 ---
 
 ### ETAPA 2: Extração via LLM (Slow Path)
 
-Campos que falharam no cache são extraídos usando a **Extractor LLM** (gpt-5-mini).
+Campos que falharam na cache são extraídos usando a **Extractor LLM** (gpt-5-mini).
 
 **Entrada:**
 * Texto bruto do documento
-* **Apenas** os campos que falharam no cache
+* **Apenas** os campos que falharam na cache
 * Schema de extração com descrições dos campos
 
 **Processo:**
@@ -130,7 +134,7 @@ Para cada campo extraído com sucesso pela LLM, o sistema tenta **gerar uma regr
 * Texto bruto do documento
 * Campo e valor extraído
 * Descrição do campo
-* Lista de outros campos (para evitar contaminação)
+<!-- * Lista de outros campos (para evitar contaminação) -->
 
 **Processo - Loop de Validação (até N tentativas):**
 
@@ -158,21 +162,22 @@ for tentativa in range(max_tentativas):
         feedback = "Validation_regex não valida o valor..."
         continue
     
-    # 5. Verifica contaminação de keywords
-    if contains_other_keywords(valor_extraido, outros_campos):
-        feedback = "Valor contém keywords de outros campos..."
-        continue
     
     # ✓ Todas validações passaram!
     return rule
 ```
+
+<!-- # 5. Verifica contaminação de keywords
+if contains_other_keywords(valor_extraido, outros_campos):
+    feedback = "Valor contém keywords de outros campos..."
+    continue -->
 
 **Validações Aplicadas:**
 
 1. **Sintaxe JSON** - verifica estrutura da resposta
 2. **Extração correta** - regra deve extrair valor esperado do texto
 3. **Validação de formato** - `validation_regex` deve aceitar o valor
-4. **Sem contaminação** - valor não pode conter keywords de outros campos
+<!-- 4. **Sem contaminação** - valor não pode conter keywords de outros campos -->
 
 **Feedback Adaptativo:**
 
@@ -194,12 +199,12 @@ A cada falha, o sistema:
 * Salvo em disco após **cada regra gerada** (salvamento incremental)
 * Formato JSON com estrutura de listas duplamente encadeadas
 * Carregado no início do processamento
-* Preserva aprendizado entre execuções
+* Capaz de preservar aprendizado entre execuções se especificado
 
 **Respostas:**
 * Todas extrações salvas ao final do processamento
 * Incluem valores esperados (ground truth) quando disponível
-* Formato JSON com metadados (índice, label, acurácia)
+* Formato JSON com metadados
 
 ---
 
@@ -294,9 +299,10 @@ Resultado: 3 campos extraídos | 1 regra nova | 1 chamada LLM1 | 1 chamada LLM2
 Antes de qualquer processamento, o texto é normalizado:
 * Separação de letras/números concatenados (`"Nome123"` → `"Nome 123"`)
 * Separação de palavras concatenadas (`"NomeInscricao"` → `"Nome Inscricao"`)
-* Colapso de múltiplos espaços/tabs → espaço único
-* Colapso de múltiplas quebras de linha → quebra única
-* Remoção de espaços em branco nas extremidades
+<!-- * Colapso de múltiplos espaços/tabs → espaço único
+* Colapso de múltiplas quebras de linha → quebra única -->
+* Colapso de múltiplos espaços, tabulações e quebras de linha em um único espaço ("`Nome  Inscricao\n\n\tData123`" → "`Nome Inscricao Data 123`")
+* Remoção de espaços em branco nas extremidades ("`  Nome Inscricao  `" → "`Nome Inscricao"`")
 
 **Modo LLM-Only:**
 
@@ -308,7 +314,7 @@ O sistema pode ser executado **sem cache** (`--no-use-cache`):
 
 **Adaptação Progressiva:**
 
-A cada documento processado, o cache:
+A cada documento processado, a cache:
 1. **Aprende** novas regras para campos inéditos
 2. **Otimiza** a ordem de regras existentes por frequência de uso
 3. **Acelera** extrações futuras em documentos similares
