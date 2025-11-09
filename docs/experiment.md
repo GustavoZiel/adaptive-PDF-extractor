@@ -18,7 +18,7 @@ No primeiro experimento, utilizou-se o dataset `fake_dataset_1000samples_seed_1`
 
 Em seguida, utilizando a cache gerada no experimento com otimização por cache, foram realizados testes em datasets maiores: `fake_dataset_2000samples_seed_1` e `fake_dataset_3000samples_seed_1`, mantendo a mesma seed.
 
-Por fim, foram realizados experimentos com datasets diferentes — `fake_dataset_1000samples_seed_2` e `fake_dataset_1000samples_seed_3` — com o objetivo de avaliar a capacidade de generalização das regras armazenadas na cache do primeiro experimento.
+Por fim, foram realizados experimentos com datasets diferentes, `fake_dataset_1000samples_seed_2` e `fake_dataset_1000samples_seed_3`, com o objetivo de avaliar a capacidade de generalização das regras armazenadas na cache.
 
 Os detalhes de cada experimento são:
 
