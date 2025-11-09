@@ -197,6 +197,6 @@ adaptive-PDF-extractor/
 
 ## Agradecimentos
 
-Agradeço a oportunidade de realizar esse projeto, me diverti bastante e aprendi muito também! 🚀
+Agradeço a oportunidade de realizar esse projeto, me diverti e aprendi bastante! 🚀
 
 > Gustavo
